@@ -24,6 +24,8 @@ export const REDIS = Symbol('REDIS');
           port: Number(config.getOrThrow<string>('REDIS_PORT')),
           password: config.getOrThrow<string>('REDIS_PASSWORD'),
           maxRetriesPerRequest: 2,
+          // Optional namespace for every key (tests use "test:" so they never touch the real keys).
+          keyPrefix: config.get<string>('REDIS_KEY_PREFIX', ''),
         });
         client.on('error', (err) =>
           logger.warn(`connection problem: ${err.message}`),

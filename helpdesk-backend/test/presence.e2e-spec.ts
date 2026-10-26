@@ -63,6 +63,7 @@ describe('agent presence (Redis)', () => {
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
       password: process.env.REDIS_PASSWORD,
+      keyPrefix: process.env.REDIS_KEY_PREFIX,
     });
     a = await createTenant(app, 'pra');
     b = await createTenant(app, 'prb');

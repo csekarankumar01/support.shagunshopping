@@ -8,6 +8,7 @@ import { CommentsModule } from './comments/comments.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { EventsModule } from './events/events.module.js';
 import { HealthModule } from './health/health.controller.js';
+import { MetricsModule } from './metrics/metrics.module.js';
 import { NotificationsModule } from './notifications/notifications.controller.js';
 import { PresenceModule } from './presence/presence.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
@@ -30,6 +31,7 @@ import { TicketsModule } from './tickets/tickets.module.js';
     CannedModule,
     NotificationsModule,
     HealthModule,
+    MetricsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

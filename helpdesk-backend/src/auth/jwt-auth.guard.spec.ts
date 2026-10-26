@@ -1,9 +1,14 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import type { RevocationService } from './revocation.service.js';
 
 const jwt = new JwtService({ secret: 'test-secret' });
-const guard = new JwtAuthGuard(jwt);
+const revoked = new Set<string>();
+const revocation = {
+  isRevoked: async (sid: string) => revoked.has(sid),
+} as unknown as RevocationService;
+const guard = new JwtAuthGuard(jwt, revocation);
 // Real login tokens always carry an expiry (JWT_EXPIRES_IN_SECONDS), so the test tokens do too.
 const sign = (payload: object, options: { expiresIn?: number } = {}) =>
   jwt.sign(payload, { expiresIn: 60, ...options });
@@ -18,7 +23,12 @@ const requestWith = (authorization?: string) => {
   return { request, context };
 };
 
-const goodPayload = { sub: 'user-1', orgId: 'org-1', role: 'AGENT' };
+const goodPayload = {
+  sub: 'user-1',
+  orgId: 'org-1',
+  role: 'AGENT',
+  sid: 'session-1',
+};
 
 describe('JwtAuthGuard', () => {
   it('accepts a valid token and sets userId, orgId and role from it', async () => {
@@ -97,6 +107,27 @@ describe('JwtAuthGuard', () => {
     const socketToken = sign({ ...goodPayload, purpose: 'socket' });
     await expect(
       guard.canActivate(requestWith(`Bearer ${socketToken}`).context),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejects a token from a session that has been revoked (logout, deactivation, password change)', async () => {
+    revoked.add('session-1');
+    try {
+      await expect(
+        guard.canActivate(requestWith(`Bearer ${sign(goodPayload)}`).context),
+      ).rejects.toThrow('Invalid or expired token');
+    } finally {
+      revoked.delete('session-1');
+    }
+    await expect(
+      guard.canActivate(requestWith(`Bearer ${sign(goodPayload)}`).context),
+    ).resolves.toBe(true);
+  });
+
+  it('rejects a validly signed token that names no session', async () => {
+    const { sid: _sid, ...withoutSession } = goodPayload;
+    await expect(
+      guard.canActivate(requestWith(`Bearer ${sign(withoutSession)}`).context),
     ).rejects.toThrow(UnauthorizedException);
   });
 });

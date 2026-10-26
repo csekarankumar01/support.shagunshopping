@@ -7,7 +7,7 @@ import { io, Socket } from 'socket.io-client';
 import { vi } from 'vitest';
 import { EventConsumers } from '../src/events/events.module.js';
 import { KafkaService } from '../src/events/kafka.service.js';
-import { MailerService } from '../src/events/mailer.service.js';
+import { MailerService } from '../src/mail/mailer.service.js';
 import { SLA_KEY, SlaService } from '../src/sla/sla.service.js';
 import {
   auth,
@@ -141,6 +141,7 @@ describe('events: outbox, Kafka, notifications, audit and the SLA engine', () =>
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
       password: process.env.REDIS_PASSWORD,
+      keyPrefix: process.env.REDIS_KEY_PREFIX,
     });
     kafka = app.get(KafkaService);
     sla = app.get(SlaService);

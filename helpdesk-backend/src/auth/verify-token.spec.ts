@@ -3,7 +3,12 @@ import { JwtService } from '@nestjs/jwt';
 import { verifyToken } from './verify-token.js';
 
 const jwt = new JwtService({ secret: 'test-secret' });
-const claims = { sub: 'user-1', orgId: 'org-1', role: 'AGENT' };
+const claims = {
+  sub: 'user-1',
+  orgId: 'org-1',
+  role: 'AGENT',
+  sid: 'session-1',
+};
 const sign = (payload: object, expiresIn = 60) =>
   jwt.sign(payload, { expiresIn });
 
@@ -52,5 +57,22 @@ describe('verifyToken', () => {
         'Invalid or expired token',
       );
     }
+  });
+
+  it('reports the session id, and refuses a token that has none', async () => {
+    expect((await verifyToken(jwt, sign(claims), 'access')).sid).toBe(
+      'session-1',
+    );
+    const { sid: _sid, ...withoutSession } = claims;
+    await expect(
+      verifyToken(jwt, sign(withoutSession), 'access'),
+    ).rejects.toThrow(UnauthorizedException);
+    await expect(
+      verifyToken(
+        jwt,
+        sign({ ...withoutSession, purpose: 'socket' }),
+        'socket',
+      ),
+    ).rejects.toThrow(UnauthorizedException);
   });
 });

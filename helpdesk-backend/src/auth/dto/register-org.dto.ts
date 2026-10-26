@@ -5,8 +5,8 @@ import {
   Length,
   Matches,
   MaxLength,
-  MinLength,
 } from 'class-validator';
+import { IsPassword } from './password.js';
 
 export class RegisterOrgDto {
   @IsString()
@@ -24,7 +24,6 @@ export class RegisterOrgDto {
   @IsEmail()
   email!: string;
 
-  @IsString()
-  @MinLength(8)
+  @IsPassword()
   password!: string;
 }

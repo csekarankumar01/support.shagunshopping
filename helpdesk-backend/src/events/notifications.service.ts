@@ -7,7 +7,7 @@ import type {
   SlaBreachedData,
   TicketCreatedData,
 } from './events.js';
-import { MailerService } from './mailer.service.js';
+import { MailerService } from '../mail/mailer.service.js';
 
 const MAX_ATTEMPTS = 4;
 

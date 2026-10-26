@@ -33,6 +33,7 @@ describe('rate limiting (Redis)', () => {
       host: process.env.REDIS_HOST,
       port: Number(process.env.REDIS_PORT),
       password: process.env.REDIS_PASSWORD,
+      keyPrefix: process.env.REDIS_KEY_PREFIX,
     });
     a = await createTenant(app, 'rl');
     slugs.push(a.slug);
@@ -42,8 +43,17 @@ describe('rate limiting (Redis)', () => {
   });
 
   afterAll(async () => {
-    const keys = await redis.keys(`rl:*${a.slug}*`);
-    if (keys.length) await redis.del(...keys);
+    // A client WITHOUT the key prefix, so the pattern and the returned names are the real, prefixed ones.
+    const raw = new Redis({
+      host: process.env.REDIS_HOST,
+      port: Number(process.env.REDIS_PORT),
+      password: process.env.REDIS_PASSWORD,
+    });
+    const keys = await raw.keys(
+      `${process.env.REDIS_KEY_PREFIX ?? ''}rl:*${a.slug}*`,
+    );
+    if (keys.length) await raw.del(...keys);
+    raw.disconnect();
     redis.disconnect();
     await deleteTenants(owner, slugs);
     await owner.end();

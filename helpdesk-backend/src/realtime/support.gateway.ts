@@ -11,9 +11,11 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Namespace, Socket } from 'socket.io';
+import { RevocationService } from '../auth/revocation.service.js';
 import { verifyToken } from '../auth/verify-token.js';
 import type { AuthenticatedUser } from '../auth/verify-token.js';
 import { DatabaseService } from '../database/database.service.js';
+import { MetricsService } from '../metrics/metrics.service.js';
 import { PresenceService } from '../presence/presence.service.js';
 import { canAccessTicket } from '../tickets/ticket-access.js';
 import { rooms } from './events.js';
@@ -32,6 +34,8 @@ const MAX_TIMER_MS = 2 ** 31 - 1;
 
 interface SocketData {
   user: AuthenticatedUser;
+  /** The login session this socket belongs to. */
+  sid: string;
   sessionExp: number;
 }
 type SupportSocket = Socket & { data: SocketData };
@@ -68,6 +72,8 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
     private readonly jwt: JwtService,
     private readonly db: DatabaseService,
     private readonly presence: PresenceService,
+    private readonly revocation: RevocationService,
+    private readonly metrics: MetricsService,
     config: ConfigService,
   ) {
     this.allowedOrigins = config
@@ -78,6 +84,18 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
 
   /** Runs for every connection attempt, before it is accepted. */
   afterInit(server: Namespace) {
+    // When a session is revoked (logout, deactivation, password change) its open sockets must close at once, on
+    // whichever API instance holds them. `local` = this instance's sockets only; every instance hears the message.
+    this.revocation.onRevoked((sids) => {
+      void server.local.fetchSockets().then((sockets) => {
+        for (const socket of sockets) {
+          if (sids.includes((socket.data as SocketData).sid)) {
+            socket.emit('session:expired');
+            socket.disconnect(true);
+          }
+        }
+      });
+    });
     server.use(async (socket, next) => {
       // Browsers always send Origin on a WebSocket handshake. A page on another site must not be able to connect.
       const origin = socket.handshake.headers.origin;
@@ -87,12 +105,16 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
       const token = (socket.handshake.auth as { token?: unknown }).token;
       if (typeof token !== 'string') return next(new Error('unauthorized'));
       try {
-        const { user, sessionExp } = await verifyToken(
+        const { user, sid, sessionExp } = await verifyToken(
           this.jwt,
           token,
           'socket',
         );
-        socket.data = { user, sessionExp } satisfies SocketData;
+        if (await this.revocation.isRevoked(sid)) {
+          // logged out, deactivated, or password changed
+          return next(new Error('unauthorized'));
+        }
+        socket.data = { user, sid, sessionExp } satisfies SocketData;
         next();
       } catch {
         next(new Error('unauthorized')); // same answer for every reason
@@ -115,7 +137,11 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
       },
       Math.min(Math.max(sessionExp * 1000 - Date.now(), 0), MAX_TIMER_MS),
     );
-    socket.once('disconnect', () => clearTimeout(timer));
+    this.metrics.websocketConnections.inc();
+    socket.once('disconnect', () => {
+      clearTimeout(timer);
+      this.metrics.websocketConnections.dec();
+    });
   }
 
   /** Staff are online while at least one of their sockets is open; the staff side hears when that changes. */
@@ -125,11 +151,13 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
         ?.to(rooms.agents(user.orgId))
         .emit('presence:changed', { userId: user.userId, online });
     // Registered first: a socket that closes while Redis is still answering must still be counted out.
-    const connected = this.presence.connect(user.orgId, user.userId);
+    const connected = this.presence.connect(user.orgId, user.userId, socket.id);
     socket.once('disconnect', () => {
       void connected
         .catch(() => false)
-        .then(() => this.presence.disconnect(user.orgId, user.userId))
+        .then(() =>
+          this.presence.disconnect(user.orgId, user.userId, socket.id),
+        )
         .then((wentOffline) => wentOffline && announce(false))
         .catch((err: Error) =>
           this.logger.warn(`presence disconnect failed: ${err.message}`),

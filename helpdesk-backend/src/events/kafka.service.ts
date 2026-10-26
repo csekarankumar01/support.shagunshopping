@@ -12,6 +12,7 @@ import {
   stringDeserializers,
   stringSerializers,
 } from '@platformatic/kafka';
+import { MetricsService } from '../metrics/metrics.service.js';
 import { TOPICS } from './events.js';
 import type { EventEnvelope, Topic } from './events.js';
 
@@ -47,7 +48,10 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
   private stopping = false;
   readonly enabled: boolean;
 
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly metrics: MetricsService,
+  ) {
     this.enabled = config.get<string>('EVENTS_ENABLED', 'true') !== 'false';
     this.brokers = config
       .get<string>('KAFKA_BROKERS', 'localhost:4092')
@@ -195,12 +199,17 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
     for (let attempt = 1; ; attempt++) {
       try {
         await handler(event);
+        this.metrics.eventsConsumed.inc({ consumer: name, outcome: 'ok' });
         return;
       } catch (err) {
         this.logger.warn(
           `[${name}] ${event.type} ${event.id} failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${(err as Error).message}`,
         );
         if (attempt >= MAX_ATTEMPTS) {
+          this.metrics.eventsConsumed.inc({
+            consumer: name,
+            outcome: 'dead_letter',
+          });
           this.logger.error(`[${name}] giving up on ${event.id}; sent to DLQ`);
           return this.deadLetter(topic, raw, event.orgId);
         }

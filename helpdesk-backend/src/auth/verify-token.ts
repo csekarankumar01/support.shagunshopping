@@ -13,6 +13,7 @@ interface JwtPayload {
   sub?: string;
   orgId?: string;
   role?: Role;
+  sid?: string;
   purpose?: string;
   sessionExp?: number;
   exp?: number;
@@ -23,6 +24,8 @@ export const SOCKET_TOKEN_TTL_SECONDS = 60;
 
 export interface VerifiedToken {
   user: AuthenticatedUser;
+  /** The login session this token belongs to: what "log out" and "deactivate" revoke. */
+  sid: string;
   /** When the login session this token came from ends (unix seconds). */
   sessionExp: number;
 }
@@ -53,6 +56,7 @@ export async function verifyToken(
   if (
     !purposeOk ||
     !payload.sub ||
+    !payload.sid ||
     !payload.orgId ||
     !payload.role ||
     !ROLES.includes(payload.role) ||
@@ -68,6 +72,7 @@ export async function verifyToken(
   // orgId comes only from the verified token, never from the request body, params or query.
   return {
     user: { userId: payload.sub, orgId: payload.orgId, role: payload.role },
+    sid: payload.sid,
     sessionExp,
   };
 }

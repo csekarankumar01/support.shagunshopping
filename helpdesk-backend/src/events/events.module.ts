@@ -1,12 +1,12 @@
 import { Injectable, Module, OnModuleInit } from '@nestjs/common';
 import { DatabaseModule } from '../database/database.module.js';
+import { MailModule } from '../mail/mail.module.js';
 import { RealtimeModule } from '../realtime/realtime.module.js';
 import { SlaModule } from '../sla/sla.module.js';
 import { SlaService } from '../sla/sla.service.js';
 import { AuditSinkService } from './audit-sink.service.js';
 import { TOPICS } from './events.js';
 import { KafkaService } from './kafka.service.js';
-import { MailerService } from './mailer.service.js';
 import { NotificationsService } from './notifications.service.js';
 import { OutboxRelayService } from './outbox-relay.service.js';
 
@@ -58,10 +58,9 @@ export class EventConsumers implements OnModuleInit {
 }
 
 @Module({
-  imports: [DatabaseModule, RealtimeModule, SlaModule],
+  imports: [DatabaseModule, MailModule, RealtimeModule, SlaModule],
   providers: [
     KafkaService,
-    MailerService,
     OutboxRelayService,
     NotificationsService,
     AuditSinkService,

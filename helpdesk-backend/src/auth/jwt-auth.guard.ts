@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
+import { RevocationService } from './revocation.service.js';
 import { verifyToken } from './verify-token.js';
 import type { AuthenticatedUser } from './verify-token.js';
 
@@ -13,13 +14,18 @@ export type { AuthenticatedUser } from './verify-token.js';
 
 export type AuthenticatedRequest = Request & {
   user: AuthenticatedUser;
-  /** When the login session behind this request ends (unix seconds). */
+  /** The login session behind this request (revoked by logout, deactivation, password change). */
+  sid: string;
+  /** When that session's access token expires (unix seconds). */
   sessionExp: number;
 };
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwt: JwtService) {}
+  constructor(
+    private readonly jwt: JwtService,
+    private readonly revocation: RevocationService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
@@ -27,8 +33,16 @@ export class JwtAuthGuard implements CanActivate {
     if (scheme !== 'Bearer' || !token) {
       throw new UnauthorizedException('Missing bearer token');
     }
-    const { user, sessionExp } = await verifyToken(this.jwt, token, 'access');
+    const { user, sid, sessionExp } = await verifyToken(
+      this.jwt,
+      token,
+      'access',
+    );
+    if (await this.revocation.isRevoked(sid)) {
+      throw new UnauthorizedException('Invalid or expired token'); // same message as any other bad token
+    }
     request.user = user;
+    request.sid = sid;
     request.sessionExp = sessionExp;
     return true;
   }

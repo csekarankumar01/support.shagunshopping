@@ -7,11 +7,15 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
+import { RateLimit, RateLimitGuard } from '../rate-limit/rate-limit.guard.js';
 import { AuthService } from './auth.service.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { InviteDto } from './dto/invite.dto.js';
 import { LoginDto } from './dto/login.dto.js';
-import { RateLimit, RateLimitGuard } from '../rate-limit/rate-limit.guard.js';
+import { RefreshDto } from './dto/refresh.dto.js';
 import { RegisterOrgDto } from './dto/register-org.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import type { AuthenticatedRequest } from './jwt-auth.guard.js';
 import { Roles } from './roles.decorator.js';
@@ -28,6 +32,7 @@ export class AuthController {
     return this.authService.registerOrg(dto);
   }
 
+  /** Returns a short-lived access token and a rotating refresh token. */
   @Post('login')
   @HttpCode(200)
   @UseGuards(RateLimitGuard)
@@ -39,6 +44,71 @@ export class AuthController {
   })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post('refresh')
+  @HttpCode(200)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'refresh', limit: 120, windowSeconds: 60, by: 'ip' })
+  refresh(@Body() dto: RefreshDto) {
+    return this.authService.refresh(dto.refreshToken);
+  }
+
+  @Post('logout')
+  @HttpCode(200)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({ name: 'logout', limit: 60, windowSeconds: 60, by: 'ip' })
+  logout(@Body() dto: RefreshDto) {
+    return this.authService.logout(dto.refreshToken);
+  }
+
+  @Post('logout-all')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  logoutAll(@Req() req: AuthenticatedRequest) {
+    return this.authService.logoutEverywhere(req.user);
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard, RateLimitGuard)
+  @RateLimit({
+    name: 'change-password',
+    limit: 5,
+    windowSeconds: 60,
+    by: 'user',
+  })
+  changePassword(
+    @Req() req: AuthenticatedRequest,
+    @Body() dto: ChangePasswordDto,
+  ) {
+    return this.authService.changePassword(req.user, req.sid, dto);
+  }
+
+  @Post('forgot-password')
+  @HttpCode(200)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    name: 'forgot-password',
+    limit: 3,
+    windowSeconds: 3600,
+    by: 'login-account',
+  })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @HttpCode(200)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    name: 'reset-password',
+    limit: 20,
+    windowSeconds: 3600,
+    by: 'ip',
+  })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Post('invite')
@@ -54,7 +124,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RateLimitGuard)
   @RateLimit({ name: 'socket-token', limit: 30, windowSeconds: 60, by: 'user' })
   socketToken(@Req() req: AuthenticatedRequest) {
-    return this.authService.issueSocketToken(req.user, req.sessionExp);
+    return this.authService.issueSocketToken(req.user, req.sid, req.sessionExp);
   }
 
   @Get('me')

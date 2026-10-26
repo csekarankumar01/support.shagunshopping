@@ -9,21 +9,26 @@ import type { Redis } from 'ioredis';
 import { REDIS } from '../redis/redis.module.js';
 
 const HEARTBEAT_MS = 20_000;
-/** An agent counts as online if their last heartbeat is newer than this (three missed beats). */
+/** A socket counts as live if its last heartbeat is newer than this (three missed beats). */
 const ONLINE_WINDOW_MS = 60_000;
 
 const key = (orgId: string) => `presence:${orgId}`;
+const member = (userId: string, socketId: string) => `${userId}:${socketId}`;
+const userOf = (entry: string) => entry.slice(0, entry.indexOf(':'));
 
 /**
- * Which staff are online, per organisation: a Redis sorted set `presence:{orgId}` of userId scored by last heartbeat.
- * A server that dies without saying goodbye cannot leave anyone "online" forever: its heartbeats stop, and entries
- * older than the window are ignored and swept. Sockets are counted in memory, so a user with two tabs stays online
- * until the last one closes.
+ * Which staff are online, per organisation, correct with any number of API instances.
+ *
+ * Redis sorted set `presence:{orgId}`: one member per open socket (`userId:socketId`), scored by its last heartbeat.
+ * A user is online while at least one of their sockets has a recent heartbeat, wherever it is connected.
+ *  - Each instance refreshes only its own sockets every 20 s.
+ *  - A clean disconnect removes that socket's entry at once.
+ *  - A crashed instance cannot leave ghosts: its sockets stop beating and fall out of the window, and are swept.
  */
 @Injectable()
 export class PresenceService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PresenceService.name);
-  private readonly sockets = new Map<string, number>(); // `${orgId}|${userId}` -> open sockets on this instance
+  private readonly local = new Set<string>(); // `${orgId}|${userId}|${socketId}` of sockets on THIS instance
   private timer?: ReturnType<typeof setInterval>;
 
   constructor(@Inject(REDIS) private readonly redis: Redis) {}
@@ -35,54 +40,68 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleDestroy() {
     clearInterval(this.timer);
-    // Leave no stale entries behind on a clean shutdown.
+    // Leave no entries behind on a clean shutdown.
     await Promise.allSettled(
-      [...this.sockets.keys()].map((entry) => {
-        const [orgId, userId] = entry.split('|');
-        return this.redis.zrem(key(orgId), userId);
+      [...this.local].map((entry) => {
+        const [orgId, userId, socketId] = entry.split('|');
+        return this.redis.zrem(key(orgId), member(userId, socketId));
       }),
     );
-    this.sockets.clear();
+    this.local.clear();
   }
 
-  /** Returns true when this user has just come online (their first open socket). */
-  async connect(orgId: string, userId: string): Promise<boolean> {
-    const entry = `${orgId}|${userId}`;
-    const count = (this.sockets.get(entry) ?? 0) + 1;
-    this.sockets.set(entry, count);
-    await this.safely(() => this.redis.zadd(key(orgId), Date.now(), userId));
-    return count === 1;
+  /** Returns true when this user has just come online (this was their first live socket anywhere). */
+  async connect(
+    orgId: string,
+    userId: string,
+    socketId: string,
+  ): Promise<boolean> {
+    this.local.add(`${orgId}|${userId}|${socketId}`);
+    const live = await this.safely(async () => {
+      await this.redis.zadd(key(orgId), Date.now(), member(userId, socketId));
+      return this.liveSockets(orgId, userId);
+    });
+    return live === 1;
   }
 
-  /** Returns true when this user has just gone offline (their last socket closed). */
-  async disconnect(orgId: string, userId: string): Promise<boolean> {
-    const entry = `${orgId}|${userId}`;
-    const count = (this.sockets.get(entry) ?? 1) - 1;
-    if (count > 0) {
-      this.sockets.set(entry, count);
-      return false;
-    }
-    this.sockets.delete(entry);
-    await this.safely(() => this.redis.zrem(key(orgId), userId));
-    return true;
+  /** Returns true when this user has just gone offline (their last live socket, anywhere, closed). */
+  async disconnect(
+    orgId: string,
+    userId: string,
+    socketId: string,
+  ): Promise<boolean> {
+    this.local.delete(`${orgId}|${userId}|${socketId}`);
+    const live = await this.safely(async () => {
+      await this.redis.zrem(key(orgId), member(userId, socketId));
+      return this.liveSockets(orgId, userId);
+    });
+    return live === 0;
   }
 
   async listOnline(orgId: string): Promise<string[]> {
+    const live = await this.safely(() => this.liveMembers(orgId, true));
+    return [...new Set((live ?? []).map(userOf))];
+  }
+
+  private async liveSockets(orgId: string, userId: string) {
+    return (await this.liveMembers(orgId, false)).filter(
+      (entry) => userOf(entry) === userId,
+    ).length;
+  }
+
+  private async liveMembers(orgId: string, sweep: boolean) {
     const cutoff = Date.now() - ONLINE_WINDOW_MS;
-    const result = await this.safely(async () => {
-      await this.redis.zremrangebyscore(key(orgId), '-inf', cutoff); // sweep the dead
-      return this.redis.zrangebyscore(key(orgId), cutoff, '+inf');
-    });
-    return result ?? [];
+    if (sweep) await this.redis.zremrangebyscore(key(orgId), '-inf', cutoff); // forget the dead
+    return this.redis.zrangebyscore(key(orgId), cutoff, '+inf');
   }
 
   private async heartbeat() {
     const now = Date.now();
     await this.safely(async () => {
       const pipeline = this.redis.pipeline();
-      for (const entry of this.sockets.keys()) {
-        const [orgId, userId] = entry.split('|');
-        pipeline.zadd(key(orgId), now, userId);
+      for (const entry of this.local) {
+        const [orgId, userId, socketId] = entry.split('|');
+        pipeline.zadd(key(orgId), now, member(userId, socketId));
       }
       await pipeline.exec();
     });

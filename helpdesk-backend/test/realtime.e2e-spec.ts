@@ -145,7 +145,13 @@ describe('live chat over WebSocket', () => {
     it('refuses the long-lived login token, no token, garbage and a forged token, all with the same error', async () => {
       const forgedWith = (secret: string) =>
         new JwtService({ secret }).sign(
-          { sub: 'x', orgId: 'y', role: 'ADMIN', purpose: 'socket' },
+          {
+            sub: 'x',
+            orgId: 'y',
+            role: 'ADMIN',
+            sid: 'forged',
+            purpose: 'socket',
+          },
           { expiresIn: 60 },
         );
       for (const token of [
@@ -162,7 +168,13 @@ describe('live chat over WebSocket', () => {
       const expired = app
         .get(JwtService, { strict: false })
         .sign(
-          { sub: 'x', orgId: 'y', role: 'AGENT', purpose: 'socket' },
+          {
+            sub: 'x',
+            orgId: 'y',
+            role: 'AGENT',
+            sid: 'expired',
+            purpose: 'socket',
+          },
           { expiresIn: -5 },
         );
       await expect(connectWith(expired)).rejects.toThrow('unauthorized');
@@ -186,6 +198,7 @@ describe('live chat over WebSocket', () => {
           sub: 'x',
           orgId: a.orgId,
           role: 'AGENT',
+          sid: 'session-expiry-test',
           purpose: 'socket',
           sessionExp,
         },

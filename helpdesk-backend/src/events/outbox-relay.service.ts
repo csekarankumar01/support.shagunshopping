@@ -5,6 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { DatabaseService } from '../database/database.service.js';
+import { MetricsService } from '../metrics/metrics.service.js';
 import { KafkaService } from './kafka.service.js';
 
 const BATCH = 50;
@@ -30,6 +31,7 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
   constructor(
     private readonly db: DatabaseService,
     private readonly kafka: KafkaService,
+    private readonly metrics: MetricsService,
   ) {}
 
   onModuleInit() {
@@ -81,6 +83,8 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
     await this.db.query('SELECT outbox_complete($1::bigint[])', [
       rows.map((row) => row.id),
     ]);
+    for (const row of rows)
+      this.metrics.eventsPublished.inc({ topic: row.topic });
     return rows.length;
   }
 }
