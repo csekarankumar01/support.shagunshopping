@@ -38,7 +38,10 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
   const query = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
   if (status) query.set('status', status);
   if (priority) query.set('priority', priority);
-  const data = await api<TicketPage>(`/api/v1/tickets?${query}`);
+  const [data, online] = await Promise.all([
+    api<TicketPage>(`/api/v1/tickets?${query}`),
+    staff ? api<{ userId: string; email: string }[]>('/api/v1/presence') : Promise.resolve([]),
+  ]);
 
   const lastPage = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
   const pageHref = (target: number) => {
@@ -62,6 +65,12 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
           </Link>
         )}
       </div>
+
+      {staff && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400" data-testid="online-staff">
+          Online now: {online.length ? online.map((person) => person.email).join(', ') : 'nobody'}
+        </p>
+      )}
 
       {/* A plain GET form: choosing filters just reloads this page with a new query string. */}
       <form className="flex flex-wrap items-center gap-2" action="/tickets">

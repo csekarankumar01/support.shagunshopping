@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { Roles } from '../auth/roles.decorator.js';
 import { RolesGuard } from '../auth/roles.guard.js';
+import { RateLimit, RateLimitGuard } from '../rate-limit/rate-limit.guard.js';
 import { CommentsService } from './comments.service.js';
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 
@@ -30,6 +31,13 @@ export class CommentsController {
   }
 
   @Post()
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    name: 'comment-create',
+    limit: 60,
+    windowSeconds: 60,
+    by: 'user',
+  })
   create(
     @CurrentUser() user: AuthenticatedUser,
     @Param('ticketId', ParseUUIDPipe) ticketId: string,

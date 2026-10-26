@@ -11,6 +11,9 @@ export default defineConfig({
     globalSetup: ['./test/global-setup.mjs'],
     // Points every test worker at that test database (never the dev database).
     setupFiles: ['./test/setup-env.ts'],
+    // One file at a time: they share Postgres, Redis and Kafka, and the events tests run the real relay and
+    // consumers, which (correctly) process any organisation's events, including another test file's.
+    fileParallelism: false,
     testTimeout: 30_000,
     hookTimeout: 60_000,
   },

@@ -12,5 +12,52 @@ services:
     volumes:
       - helpdesk_pgdata:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7
+    container_name: helpdesk-redis
+    restart: unless-stopped
+    # AOF persistence: SLA timers must survive a restart. The password comes from .env.
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - helpdesk_redisdata:/data
+
+  # Kafka-compatible broker in one container (decision recorded in CLAUDE.md section 13).
+  # Containers reach it at redpanda:9092; programs on this machine at localhost:${KAFKA_PORT}.
+  redpanda:
+    image: redpandadata/redpanda:v26.2.6
+    container_name: helpdesk-redpanda
+    restart: unless-stopped
+    command:
+      - redpanda
+      - start
+      - --mode=dev-container
+      - --smp=1
+      - --memory=768M
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:${KAFKA_PORT}
+    ports:
+      - "${KAFKA_PORT}:19092"
+    volumes:
+      - helpdesk_redpandadata:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # Local mail catcher: the app really sends email over SMTP, Mailpit keeps it instead of delivering it.
+  # Read the mail at http://localhost:${MAIL_UI_PORT}
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: helpdesk-mailpit
+    restart: unless-stopped
+    ports:
+      - "${SMTP_PORT}:1025"
+      - "${MAIL_UI_PORT}:8025"
+
 volumes:
   helpdesk_pgdata:
+  helpdesk_redisdata:
+  helpdesk_redpandadata:

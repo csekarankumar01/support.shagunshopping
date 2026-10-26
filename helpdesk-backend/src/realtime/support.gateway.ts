@@ -14,9 +14,17 @@ import type { Namespace, Socket } from 'socket.io';
 import { verifyToken } from '../auth/verify-token.js';
 import type { AuthenticatedUser } from '../auth/verify-token.js';
 import { DatabaseService } from '../database/database.service.js';
+import { PresenceService } from '../presence/presence.service.js';
 import { canAccessTicket } from '../tickets/ticket-access.js';
 import { rooms } from './events.js';
-import type { Ack, LiveComment, StatusChange, TypingEvent } from './events.js';
+import type {
+  Ack,
+  Assignment,
+  LiveComment,
+  StatusChange,
+  TicketAlert,
+  TypingEvent,
+} from './events.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_ROOMS_PER_SOCKET = 50;
@@ -59,6 +67,7 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
   constructor(
     private readonly jwt: JwtService,
     private readonly db: DatabaseService,
+    private readonly presence: PresenceService,
     config: ConfigService,
   ) {
     this.allowedOrigins = config
@@ -93,7 +102,10 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
 
   handleConnection(socket: SupportSocket) {
     const { user, sessionExp } = socket.data;
-    if (isStaff(user)) void socket.join(rooms.agents(user.orgId));
+    if (isStaff(user)) {
+      void socket.join(rooms.agents(user.orgId));
+      void this.trackPresence(socket, user);
+    }
 
     // The socket lives no longer than the login session it came from.
     const timer = setTimeout(
@@ -104,6 +116,30 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
       Math.min(Math.max(sessionExp * 1000 - Date.now(), 0), MAX_TIMER_MS),
     );
     socket.once('disconnect', () => clearTimeout(timer));
+  }
+
+  /** Staff are online while at least one of their sockets is open; the staff side hears when that changes. */
+  private async trackPresence(socket: SupportSocket, user: AuthenticatedUser) {
+    const announce = (online: boolean) =>
+      this.server
+        ?.to(rooms.agents(user.orgId))
+        .emit('presence:changed', { userId: user.userId, online });
+    // Registered first: a socket that closes while Redis is still answering must still be counted out.
+    const connected = this.presence.connect(user.orgId, user.userId);
+    socket.once('disconnect', () => {
+      void connected
+        .catch(() => false)
+        .then(() => this.presence.disconnect(user.orgId, user.userId))
+        .then((wentOffline) => wentOffline && announce(false))
+        .catch((err: Error) =>
+          this.logger.warn(`presence disconnect failed: ${err.message}`),
+        );
+    });
+    try {
+      if (await connected) announce(true);
+    } catch (err) {
+      this.logger.warn(`presence connect failed: ${(err as Error).message}`);
+    }
   }
 
   @SubscribeMessage('ticket:join')
@@ -210,5 +246,22 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
       ?.to(rooms.ticket(orgId, change.ticketId))
       .to(rooms.agents(orgId))
       .emit('ticket:status', change);
+  }
+
+  /** A new ticket, for every connected staff member's queue. */
+  publishTicketCreated(orgId: string, alert: TicketAlert) {
+    this.server?.to(rooms.agents(orgId)).emit('ticket:created', alert);
+  }
+
+  /** The red alert of the SLA workflow: staff only, never customers. */
+  publishSlaBreached(orgId: string, alert: TicketAlert) {
+    this.server?.to(rooms.agents(orgId)).emit('sla:breached', alert);
+  }
+
+  publishAssigned(orgId: string, change: Assignment) {
+    this.server
+      ?.to(rooms.ticket(orgId, change.ticketId))
+      .to(rooms.agents(orgId))
+      .emit('ticket:assigned', change);
   }
 }

@@ -3,9 +3,15 @@ import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
+import { CannedModule } from './canned/canned.controller.js';
 import { CommentsModule } from './comments/comments.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { EventsModule } from './events/events.module.js';
+import { NotificationsModule } from './notifications/notifications.controller.js';
+import { PresenceModule } from './presence/presence.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
+import { RedisModule } from './redis/redis.module.js';
+import { TeamModule } from './team/team.controller.js';
 import { TicketsModule } from './tickets/tickets.module.js';
 
 @Module({
@@ -16,6 +22,12 @@ import { TicketsModule } from './tickets/tickets.module.js';
     TicketsModule,
     CommentsModule,
     RealtimeModule,
+    PresenceModule,
+    RedisModule,
+    EventsModule,
+    TeamModule,
+    CannedModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

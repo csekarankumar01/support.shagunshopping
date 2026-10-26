@@ -116,7 +116,15 @@ export async function deleteTenants(owner: pg.Pool, slugs: string[]) {
     await client.query('BEGIN');
     await client.query('SET LOCAL session_replication_role = replica');
     const orgs = '(SELECT id FROM organizations WHERE slug = ANY($1))';
-    for (const table of ['audit_logs', 'comments', 'tickets', 'users']) {
+    for (const table of [
+      'notifications',
+      'outbox_events',
+      'canned_responses',
+      'audit_logs',
+      'comments',
+      'tickets',
+      'users',
+    ]) {
       await client.query(`DELETE FROM ${table} WHERE org_id IN ${orgs}`, [
         slugs,
       ]);

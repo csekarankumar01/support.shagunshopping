@@ -42,3 +42,15 @@ export interface TypingEvent {
 
 /** What a handler answers to a client that asked for an acknowledgement. */
 export type Ack = { ok: true } | { ok: false; error: string };
+
+/** Pushed to staff when a ticket is created (from the `ticket.created` event) or breaches its SLA. */
+export interface TicketAlert {
+  ticketId: string;
+  subject: string;
+  priority: string;
+}
+
+export interface Assignment {
+  ticketId: string;
+  agentId: string | null;
+}

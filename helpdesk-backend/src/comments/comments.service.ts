@@ -3,6 +3,7 @@ import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import type { Role } from '../auth/role.js';
 import { DatabaseService } from '../database/database.service.js';
 import { SupportGateway } from '../realtime/support.gateway.js';
+import { SlaService } from '../sla/sla.service.js';
 import { TicketsService } from '../tickets/tickets.service.js';
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 
@@ -28,6 +29,7 @@ export class CommentsService {
     private readonly db: DatabaseService,
     private readonly tickets: TicketsService,
     private readonly realtime: SupportGateway,
+    private readonly sla: SlaService,
   ) {}
 
   /** Customers never receive internal notes: they are filtered out in SQL, not in the client. */
@@ -78,6 +80,16 @@ export class CommentsService {
     );
     // Pushed unredacted: the gateway decides per audience who may see the author's address.
     this.realtime.publishComment(user.orgId, rows[0]);
+    // The first public reply from staff stops the SLA clock (plan workflow B: ZREM). Internal notes do not count.
+    if (user.role !== 'CUSTOMER' && !isInternalNote) {
+      const answered = await this.db.tenantQuery(
+        user.orgId,
+        `UPDATE tickets SET first_response_at = now()
+          WHERE org_id = $1 AND id = $2 AND first_response_at IS NULL RETURNING id`,
+        [ticketId],
+      );
+      if (answered.rowCount) await this.sla.cancel(user.orgId, ticketId);
+    }
     return this.redactAuthor(user, rows[0]);
   }
 }
