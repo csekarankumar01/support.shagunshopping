@@ -75,6 +75,24 @@ export class TicketsService {
     };
   }
 
+  /** One ticket, with the same visibility rules (and the same 404) as assertAccessible. */
+  async get(user: AuthenticatedUser, ticketId: string) {
+    const params: unknown[] = [ticketId];
+    let ownerFilter = '';
+    if (user.role === 'CUSTOMER') {
+      params.push(user.userId);
+      ownerFilter = 'AND requester_id = $3';
+    }
+    const { rows } = await this.db.tenantQuery<TicketRow>(
+      user.orgId,
+      `SELECT ${TICKET_COLUMNS} FROM tickets
+        WHERE org_id = $1 AND id = $2 ${ownerFilter}`,
+      params,
+    );
+    if (!rows[0]) throw new NotFoundException('Ticket not found');
+    return rows[0];
+  }
+
   /**
    * Throws 404 unless the ticket is in the caller's org (and, for customers, is their own).
    * 404 rather than 403 so another tenant's ticket ids cannot be probed for existence.

@@ -2,10 +2,10 @@
 
 ## Step 1: Project setup (done)
 
-**Built:** NestJS backend scaffolded with `nest new helpdesk-backend` (npm, `--skip-git`). `GET /` returns `Hello World!` (HTTP 200, checked locally on port 3000).
+**Built:** NestJS backend scaffolded with `nest new helpdesk-backend` (npm, `--skip-git`). `GET /` returns `Hello World!` (HTTP 200, checked locally; the port was 3000 then and is 4310 since Step 6).
 
 **Key files** (`helpdesk-backend/src/`):
-- `main.ts`: starts the app and listens on `PORT` or 3000.
+- `main.ts`: starts the app and listens on `PORT` (4310; was 3000 until Step 6).
 - `app.module.ts`: root module; wires the controller and service together.
 - `app.controller.ts`: `@Get()` route that calls the service.
 - `app.service.ts`: holds the logic (returns the greeting).
@@ -15,7 +15,7 @@
 - Versions the CLI picked (latest, not pinned in the plan): NestJS 12, TypeScript 6, Vitest 4 for tests (not Jest). Developer confirmed: keep these versions.
 - Git initialised at project root (branch `main`) with a root `.gitignore`; no commits yet.
 
-**Confusing / to note:** generated code uses ESM (imports end in `.js`, top-level `await`), which differs from older Nest tutorials. Port 3000 must be free before `npm run start`.
+**Confusing / to note:** generated code uses ESM (imports end in `.js`, top-level `await`), which differs from older Nest tutorials. The API's port must be free before `npm run start`.
 
 ## Step 2: Database and User table (done)
 
@@ -96,7 +96,7 @@
 - Statuses OPEN/IN_PROGRESS/RESOLVED/CLOSED and priorities LOW/MEDIUM/HIGH/URGENT chosen by me (plan did not name them).
 - Only CUSTOMERs create tickets (per plan); agents cannot create on a customer's behalf yet.
 - Only status changes are audited (plan: status and assignment). There is no assign-agent endpoint yet, so `agent_id` stays NULL.
-- No `GET /tickets/:id` (not in the plan). `ticket.created` Kafka event and WebSocket broadcast on comments come in Steps 7-8; SLA timer removal on agent reply is Step 10.
+- No `GET /tickets/:id` at this point (not in the plan; added in Step 6 because the detail page needs it). `ticket.created` Kafka event and WebSocket broadcast on comments come in Steps 7-8; SLA timer removal on agent reply is Step 10.
 - Row-Level Security: still undecided and not enabled (open reviewer question 1).
 
 **Not done / watch:** the permanent automated test suite does not exist yet (only the scaffold's example tests); no index for the customer "my tickets" query or for `ORDER BY created_at`; migrations are still applied by hand.
@@ -128,4 +128,30 @@ Against the plan's "under 30 ms ticket creation": met at p50/p95 here, but p99 u
 
 **Still open:** `npm audit` findings (all in the Nest scaffold; not reviewed); no rate limiting on login/register-org; no refresh tokens or revocation; roles live in the token for up to an hour; `agent_id` has no assignment endpoint yet; the benchmark script was a temporary file and is not in the repo.
 
-**Next:** Step 6, Next.js frontend (Customer Portal and Agent Queue).
+## Step 6: Next.js frontend (done) - Customer Portal and Agent Queue
+
+**Built** (`helpdesk-frontend/`, Next.js 16.4.3 App Router, React 19.3.0, Tailwind 4, TypeScript 5):
+- Pages: `/login`, `/register` (creates org + admin and signs in), `/tickets` (customers: "My tickets"; agents/admins: "Queue" with SLA column, status/priority filters, pagination), `/tickets/new` (customer only), `/tickets/[id]` (conversation, reply form; staff also get a status selector and an "internal note" checkbox), `/team` (admin only: invite an agent or customer).
+- **Login token lives in an httpOnly, SameSite=Lax cookie set by the Next server** (`lib/session.ts`). The browser only talks to Next; Next calls the API server to server with `Authorization: Bearer` (`lib/api.ts`). So page JavaScript can never read the token, and the API needs **no CORS**.
+- Forms are Server Actions (`app/actions/`) shown by small client components (`components/forms.tsx`, `useActionState`). `lib/auth.ts` asks the API `GET /auth/me` for the role instead of decoding the JWT in the frontend.
+- `proxy.ts` redirects visitors with no cookie to `/login` (speed only; the API still verifies every call). A 401 from the API sends the user to `/login?expired=1`.
+- Backend change: added `GET /api/v1/tickets/:id` (same org + customer-owns-it rules, 404 otherwise) with 3 new e2e tests, because the detail page needs it. Backend tests: 21 unit + 48 e2e, all passing.
+
+**Ports changed (developer's request, other projects use the old ones):** API **4310**, Next **4311**. `PORT=4310` is in `.env`/`.env.example`; Next's port is in `helpdesk-frontend/package.json`; `API_URL` (default `http://localhost:4310`) in `helpdesk-frontend/.env.example`. Avoid 1338, 1339, 8000 (used elsewhere).
+
+**Checked in a real headless Chrome against the running app (35 checks, throwaway database, script not in the repo):** no-cookie redirect; register/login/logout; cookie is httpOnly + SameSite=Lax and the token is not in `document.cookie` or the page HTML; admin invites; customer raises a ticket and replies; agent adds an internal note, changes status, replies; the customer sees the reply and new status but **neither the internal note's text nor its tag, even in the raw HTML**; a second customer gets a 404 page for the first customer's ticket; a malformed id gives 404; wrong password shows "Invalid credentials" and keeps the email; a forged cookie returns the user to `/login`. Lint and `next build` pass.
+
+**Decisions / plan gaps filled:**
+- Option 1 (httpOnly cookie via the Next server) chosen over localStorage + CORS. Step 7 will still need an origin allowlist (CORS) on the Socket.io gateway, plus a short-lived token handed to the browser just for the socket handshake, because the browser cannot read the httpOnly cookie.
+- `/team` invite page and `GET /tickets/:id` were added beyond the plan's list; both are small and needed to use the app at all.
+- Times are shown in UTC (labelled), so server rendering does not depend on a timezone.
+- The scaffold left `cacheComponents` on, so every page that reads the cookie sits inside `<Suspense>` (a build error otherwise). `AGENTS.md` in the frontend is generated by Next and only says to read its bundled docs; I did, for cookies, proxy and cache components.
+
+**Known limitations:**
+- If a form that answers with a message (invite, wrong password, status change) is submitted **before the page's JavaScript has loaded**, the browser does a plain form post and the page comes back blank (the server did the work; the message is just not displayed). Redirecting actions are fine. Normal use is unaffected; my first test run hit it by clicking too fast. Not investigated further.
+- No live updates yet (Step 7): a page shows new messages after reload or after your own action.
+- Comments carry only an author id, so authors show as "You", "Customer" or "Support", not names. No user list or user names in the API yet.
+- Cookie is `Secure` only in production builds, so plain http on localhost works.
+- Not tested: mobile layout, accessibility audit, more than one browser.
+
+**Next:** Step 7, live chat with Socket.io and Redis presence (needs Redis added to `docker-compose.yml`; will ask first).

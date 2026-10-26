@@ -240,6 +240,38 @@ describe('multi-tenancy through the API', () => {
     });
   });
 
+  describe('reading one ticket (GET /tickets/:id)', () => {
+    it('lets the owner, and any agent or admin of the same organisation, read it', async () => {
+      for (const token of [a.cust1, a.agent, a.admin]) {
+        const res = await http(app)
+          .get(`${API}/tickets/${ticketA1}`)
+          .set(auth(token));
+        expect(res.status).toBe(200);
+        expect(res.body.id).toBe(ticketA1);
+        expect(res.body.subject).toBe('A1 printer broken');
+      }
+    });
+
+    it("answers 404 for another organisation's users and for another customer's ticket", async () => {
+      for (const token of [b.cust1, b.agent, b.admin, a.cust2]) {
+        const res = await http(app)
+          .get(`${API}/tickets/${ticketA1}`)
+          .set(auth(token));
+        expect(res.status).toBe(404);
+      }
+    });
+
+    it('needs a token (401) and a UUID (400)', async () => {
+      expect((await http(app).get(`${API}/tickets/${ticketA1}`)).status).toBe(
+        401,
+      );
+      expect(
+        (await http(app).get(`${API}/tickets/not-a-uuid`).set(auth(a.agent)))
+          .status,
+      ).toBe(400);
+    });
+  });
+
   describe('cross-tenant attempts (all 404, nothing changes)', () => {
     it("another organisation's agent and admin cannot change a ticket's status", async () => {
       for (const token of [b.agent, b.admin]) {

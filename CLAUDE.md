@@ -7,8 +7,9 @@ This file is the single source of truth for the project. Read it fully at the st
 
 ## 1. Status
 
-- Planning is complete. The backend lives in `helpdesk-backend/` inside the project root; Postgres runs from the root `docker-compose.yml`.
-- Steps 1 to 5 are done (proof of concept reached, see `PROGRESS.md`). Current step: **Step 6** (see section 10).
+- Planning is complete. The backend lives in `helpdesk-backend/` and the frontend in `helpdesk-frontend/`, both inside the project root; Postgres runs from the root `docker-compose.yml`.
+- Steps 1 to 6 are done (proof of concept reached in Step 5; frontend in Step 6, see `PROGRESS.md`). Current step: **Step 7** (see section 10).
+- **Ports (developer's instruction; other projects use the old ones):** API `4310`, Next.js `4311`, Postgres `5432`. Do not use 3000, 3001, 1338, 1339 or 8000. Pick new ports from the 43xx range and check they are free first.
 - Keep `PROGRESS.md` up to date (see section 12).
 
 ---
@@ -103,7 +104,14 @@ Rules to follow whenever writing code:
 ### Commands (run from `helpdesk-backend/`)
 - `npm run db:migrate` applies pending migrations to the database in `../.env`. `npm run db:migrate -- --database NAME` targets another database. Never edit a migration that has been applied (its checksum is stored); add a new one.
 - `npm test` runs unit tests (no database). `npm run test:e2e` runs end-to-end tests against the separate `helpdesk_test` database, which it builds and migrates itself. `npm run test:all` runs both.
-- `.env` needs `POSTGRES_*` (owner, used only by migrations and test cleanup), `APP_DB_USER`/`APP_DB_PASSWORD` (what the app uses), `JWT_SECRET`, `JWT_EXPIRES_IN_SECONDS`. See `.env.example`.
+- `.env` needs `POSTGRES_*` (owner, used only by migrations and test cleanup), `APP_DB_USER`/`APP_DB_PASSWORD` (what the app uses), `JWT_SECRET`, `JWT_EXPIRES_IN_SECONDS`, `PORT`. See `.env.example`.
+
+### Frontend (`helpdesk-frontend/`, run from that folder)
+- `npm run dev` (or `npm run build` then `npm run start`) serves on port 4311. `npm run lint` checks it. It finds the API through `API_URL` (default `http://localhost:4310`).
+- **Token rule:** the JWT lives only in an httpOnly cookie set by the Next server. The browser never receives it and never calls the API directly, so the API needs no CORS. Keep it that way; do not put the token in `localStorage` or in client components. (Step 7's Socket.io gateway is the planned exception: it will need an origin allowlist and a short-lived handshake token.)
+- Role checks in the frontend only tidy the UI. The backend guards are the real enforcement.
+- `cacheComponents` is on: any component that reads `cookies()` or `searchParams`/`params` must sit inside `<Suspense>`.
+- Next.js 16 differs from older tutorials; read the docs in `helpdesk-frontend/node_modules/next/dist/docs/` before using an API from memory.
 
 ---
 
@@ -122,7 +130,7 @@ Enforced by role-based guards (RBAC).
 | Module | Base path | Endpoints |
 |---|---|---|
 | AuthModule | /api/v1/auth | POST /register-org (atomic tenant + admin creation), POST /login (issues JWT), POST /invite |
-| TicketsModule | /api/v1/tickets | GET / (paginated tenant queue), POST / (saves ticket and emits `ticket.created`), PATCH /:id/status |
+| TicketsModule | /api/v1/tickets | GET / (paginated tenant queue), GET /:id (added in Step 6 for the detail page), POST / (saves ticket and emits `ticket.created`), PATCH /:id/status |
 | CommentsModule | /api/v1/tickets/:id/comments | GET / (strips internal notes for customers), POST / (saves and broadcasts over WebSocket) |
 | ChatGateway | wss://.../support | Validates the JWT on handshake and scopes each socket to its organisation's rooms |
 

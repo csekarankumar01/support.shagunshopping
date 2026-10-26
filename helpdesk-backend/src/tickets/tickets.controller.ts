@@ -33,6 +33,15 @@ export class TicketsController {
     return this.tickets.list(user, query);
   }
 
+  @Get(':id')
+  @Roles('ADMIN', 'AGENT', 'CUSTOMER')
+  get(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.tickets.get(user, id);
+  }
+
   @Post()
   @Roles('CUSTOMER')
   create(@CurrentUser() user: AuthenticatedUser, @Body() dto: CreateTicketDto) {
