@@ -1,9 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { PriorityBadge, StatusBadge } from '@/components/badges';
-import { LocalTime } from '@/components/local-time';
-import { CommentForm, StatusForm } from '@/components/forms';
+import { CommentForm } from '@/components/forms';
+import { LiveTicket } from '@/components/live-ticket';
 import { ApiError, api } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { isStaff } from '@/lib/constants';
@@ -35,60 +34,16 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
     throw err;
   }
 
-  // The API sends the author's role always, and their address only when the viewer may see it.
-  const authorLabel = (comment: TicketComment) => {
-    if (comment.authorId === user.userId) return 'You';
-    if (comment.authorRole === 'CUSTOMER') return comment.authorEmail ?? 'Customer';
-    return comment.authorEmail ? `${comment.authorEmail} (${comment.authorRole.toLowerCase()})` : 'Support';
-  };
-
   return (
     <div className="space-y-6">
       <Link href="/tickets" className="text-sm text-blue-600 hover:underline">
         ← Back to {staff ? 'queue' : 'my tickets'}
       </Link>
 
-      <div className="space-y-3">
-        <h1 className="text-xl font-semibold [overflow-wrap:anywhere]">{ticket.subject}</h1>
-        <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
-          <StatusBadge status={ticket.status} />
-          <PriorityBadge priority={ticket.priority} />
-          <span>Opened <LocalTime iso={ticket.createdAt} /></span>
-          {staff && <span>SLA deadline <LocalTime iso={ticket.slaDeadline} /></span>}
-        </div>
-        {staff && <StatusForm ticketId={ticket.id} current={ticket.status} />}
-      </div>
+      <h1 className="text-xl font-semibold [overflow-wrap:anywhere]">{ticket.subject}</h1>
 
-      <section className="space-y-3">
-        <h2 className="font-medium">Conversation</h2>
-        {comments.length === 0 ? (
-          <p className="text-sm text-neutral-500">No messages yet.</p>
-        ) : (
-          <ul className="space-y-3">
-            {comments.map((comment) => (
-              <li
-                key={comment.id}
-                className={
-                  comment.isInternalNote
-                    ? 'rounded-md border border-amber-300 bg-amber-50 px-4 py-3 [overflow-wrap:anywhere] dark:border-amber-800 dark:bg-amber-950'
-                    : 'rounded-md border border-neutral-200 px-4 py-3 [overflow-wrap:anywhere] dark:border-neutral-800'
-                }
-              >
-                <div className="mb-1 flex items-center gap-2 text-xs text-neutral-500">
-                  <span className="font-medium">{authorLabel(comment)}</span>
-                  <span><LocalTime iso={comment.createdAt} /></span>
-                  {comment.isInternalNote && (
-                    <span className="rounded-full bg-amber-200 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-800 dark:text-amber-100">
-                      Internal note
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm whitespace-pre-wrap">{comment.message}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* Server-rendered with today's data; the socket keeps it current from here on. */}
+      <LiveTicket ticket={ticket} comments={comments} viewer={{ userId: user.userId, role: user.role }} />
 
       <section className="space-y-3">
         <h2 className="font-medium">Reply</h2>

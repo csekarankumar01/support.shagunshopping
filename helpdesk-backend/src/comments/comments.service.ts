@@ -2,6 +2,7 @@ import { ForbiddenException, Injectable } from '@nestjs/common';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import type { Role } from '../auth/role.js';
 import { DatabaseService } from '../database/database.service.js';
+import { SupportGateway } from '../realtime/support.gateway.js';
 import { TicketsService } from '../tickets/tickets.service.js';
 import { CreateCommentDto } from './dto/create-comment.dto.js';
 
@@ -10,7 +11,7 @@ const COMMENT_COLUMNS = `c.id, c.ticket_id AS "ticketId", c.author_id AS "author
   u.role AS "authorRole", u.email AS "authorEmail",
   c.message, c.is_internal_note AS "isInternalNote", c.created_at AS "createdAt"`;
 
-interface CommentRow {
+export interface CommentRow {
   id: string;
   ticketId: string;
   authorId: string;
@@ -26,6 +27,7 @@ export class CommentsService {
   constructor(
     private readonly db: DatabaseService,
     private readonly tickets: TicketsService,
+    private readonly realtime: SupportGateway,
   ) {}
 
   /** Customers never receive internal notes: they are filtered out in SQL, not in the client. */
@@ -74,6 +76,8 @@ export class CommentsService {
          JOIN users u ON u.id = c.author_id AND u.org_id = c.org_id`,
       [ticketId, user.userId, dto.message, isInternalNote],
     );
+    // Pushed unredacted: the gateway decides per audience who may see the author's address.
+    this.realtime.publishComment(user.orgId, rows[0]);
     return this.redactAuthor(user, rows[0]);
   }
 }

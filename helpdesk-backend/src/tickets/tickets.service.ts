@@ -1,8 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { DatabaseService } from '../database/database.service.js';
+import { SupportGateway } from '../realtime/support.gateway.js';
 import { CreateTicketDto } from './dto/create-ticket.dto.js';
 import { ListTicketsQueryDto } from './dto/list-tickets-query.dto.js';
+import { canAccessTicket } from './ticket-access.js';
 import type { TicketStatus } from './ticket.constants.js';
 
 const TICKET_COLUMNS = `id, subject, status, priority,
@@ -22,7 +24,10 @@ export interface TicketRow {
 
 @Injectable()
 export class TicketsService {
-  constructor(private readonly db: DatabaseService) {}
+  constructor(
+    private readonly db: DatabaseService,
+    private readonly realtime: SupportGateway,
+  ) {}
 
   /** The SLA deadline is set in SQL from the organisation's own sla_mins (plan workflow A). */
   async create(user: AuthenticatedUser, dto: CreateTicketDto) {
@@ -98,18 +103,9 @@ export class TicketsService {
    * 404 rather than 403 so another tenant's ticket ids cannot be probed for existence.
    */
   async assertAccessible(user: AuthenticatedUser, ticketId: string) {
-    const params: unknown[] = [ticketId];
-    let ownerFilter = '';
-    if (user.role === 'CUSTOMER') {
-      params.push(user.userId);
-      ownerFilter = 'AND requester_id = $3';
+    if (!(await canAccessTicket(this.db, user, ticketId))) {
+      throw new NotFoundException('Ticket not found');
     }
-    const { rowCount } = await this.db.tenantQuery(
-      user.orgId,
-      `SELECT 1 FROM tickets WHERE org_id = $1 AND id = $2 ${ownerFilter}`,
-      params,
-    );
-    if (!rowCount) throw new NotFoundException('Ticket not found');
   }
 
   /** Status change and its audit row are saved together or not at all. */
@@ -118,30 +114,36 @@ export class TicketsService {
     ticketId: string,
     status: TicketStatus,
   ) {
-    return this.db.tenantTransaction(user.orgId, async (q) => {
-      const current = await q<{ status: TicketStatus }>(
-        'SELECT status FROM tickets WHERE org_id = $1 AND id = $2 FOR UPDATE',
-        [ticketId],
-      );
-      if (!current.rowCount) throw new NotFoundException('Ticket not found');
-      const oldStatus = current.rows[0].status;
+    const { ticket, changed } = await this.db.tenantTransaction(
+      user.orgId,
+      async (q) => {
+        const current = await q<{ status: TicketStatus }>(
+          'SELECT status FROM tickets WHERE org_id = $1 AND id = $2 FOR UPDATE',
+          [ticketId],
+        );
+        if (!current.rowCount) throw new NotFoundException('Ticket not found');
+        const oldStatus = current.rows[0].status;
 
-      if (oldStatus !== status) {
-        await q(
-          'UPDATE tickets SET status = $3, updated_at = now() WHERE org_id = $1 AND id = $2',
-          [ticketId, status],
+        if (oldStatus !== status) {
+          await q(
+            'UPDATE tickets SET status = $3, updated_at = now() WHERE org_id = $1 AND id = $2',
+            [ticketId, status],
+          );
+          await q(
+            `INSERT INTO audit_logs (org_id, ticket_id, actor_id, action, old_val, new_val)
+             VALUES ($1, $2, $3, 'STATUS_CHANGED', $4, $5)`,
+            [ticketId, user.userId, oldStatus, status],
+          );
+        }
+        const updated = await q<TicketRow>(
+          `SELECT ${TICKET_COLUMNS} FROM tickets WHERE org_id = $1 AND id = $2`,
+          [ticketId],
         );
-        await q(
-          `INSERT INTO audit_logs (org_id, ticket_id, actor_id, action, old_val, new_val)
-           VALUES ($1, $2, $3, 'STATUS_CHANGED', $4, $5)`,
-          [ticketId, user.userId, oldStatus, status],
-        );
-      }
-      const updated = await q<TicketRow>(
-        `SELECT ${TICKET_COLUMNS} FROM tickets WHERE org_id = $1 AND id = $2`,
-        [ticketId],
-      );
-      return updated.rows[0];
-    });
+        return { ticket: updated.rows[0], changed: oldStatus !== status };
+      },
+    );
+    // Published only after the transaction has committed, so nobody is told about a change that was rolled back.
+    if (changed) this.realtime.publishStatus(user.orgId, { ticketId, status });
+    return ticket;
   }
 }

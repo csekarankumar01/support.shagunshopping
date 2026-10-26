@@ -162,4 +162,35 @@ Against the plan's "under 30 ms ticket creation": met at p50/p95 here, but p99 u
 
 **Tests now:** backend 21 unit + 50 e2e, frontend lint and `next build` clean.
 
-**Next:** Step 7, live chat with Socket.io and Redis presence (needs Redis added to `docker-compose.yml`; will ask first).
+## Step 7: Live chat with Socket.io (part 1 of 2 done: chat; Redis presence still to do)
+
+**Built (backend, `src/realtime/`, `src/auth/verify-token.ts`):**
+- `SupportGateway` at namespace `/support` (WebSocket transport only). The handshake needs a **60-second socket token** (`POST /api/v1/auth/socket-token`, for a logged-in user) and an allowed `Origin` (`FRONTEND_ORIGIN`, default `http://localhost:4311`). Org, user and role come only from the token.
+- **Rooms** all start with the org id: `org:{org}:ticket:{id}` (the ticket's customer and staff), `org:{org}:ticket:{id}:staff` (staff watching it), `org:{org}:agents` (all connected staff). Joining a ticket runs the same `canAccessTicket` rule as the REST API ("Ticket not found" for other tenants, other customers and made-up ids alike).
+- Messages are still **written through REST** (validated, saved, audited) and then published, after the save commits: `comment:new` and `ticket:status` (only when the status really changed). Plus `typing`. The customer's side gets public comments only, with staff authors' emails removed.
+- Tokens are not interchangeable: REST refuses socket tokens, the socket refuses login tokens, and tokens with no expiry are now refused everywhere (stricter than before). The socket is dropped (`session:expired`) when the login session it came from ends.
+- New packages: `@nestjs/websockets` 12.2.0 and `@nestjs/platform-socket.io` 12.2.0 (Socket.io 4.8.4) in the backend, `socket.io-client` 4.8.4 in the backend (dev, tests) and in the frontend.
+
+**Built (frontend):** `app/api/socket-token/route.ts` (reads the httpOnly cookie, returns only the socket token), `lib/socket.ts` (one shared socket, a fresh token before every reconnect, rejoins rooms, reloads page data after a reconnect, typing throttle), `components/live-ticket.tsx` (status, conversation, "is typing", Live/Reconnecting indicator), `components/live-refresh.tsx` (the staff queue reloads itself when a status changes).
+
+**Proof:**
+- Backend: 28 unit + 68 e2e tests. 18 of the e2e tests are new and use a real Socket.io client against a real listening server: handshake refusals (including wrong origin), who may join, who receives what, typing, session expiry. **Mutation-checked: 9 deliberate breakages, each caught** (internal note sent to customers, staff email leaked, no access check on join, no origin check, REST accepting a socket token, socket accepting a login token, a customer in staff rooms, internal typing leaked, session expiry ignored).
+- Browser: two real browsers at once (customer in Chrome, agent in Edge), 30 checks. Replies, internal notes and typing arrive live with no page reload and no duplicates. The customer never sees an internal note or the agent's address, even live. Status changes appear live. The queue refreshes itself. After the backend is killed and restarted, the page shows "Reconnecting...", reconnects by itself, and later messages still arrive (rooms rejoined). A page served from another origin (`127.0.0.1`) can log in over HTTP but its WebSocket is refused. The earlier 47-check browser suite was re-run: still 47/47.
+- **Bug found by the browser test and fixed:** after an agent changed a status, React reset the form and the status dropdown snapped back to "OPEN" under a "Status updated." message. Fixed by remounting the select, keyed on the real status.
+
+**Decisions / differences from the plan (please review):**
+- Internal notes go to the **ticket's staff room** rather than the org-wide `org:{org}:agents` room the plan names. It is a strict subset (still staff only) and avoids sending note text to agents who are not looking at that ticket. `org:{org}:agents` carries queue-wide events (status changes).
+- Typing indicators, including a staff-only "writing an internal note", were added (typing is in the plan's purpose section, not its API table).
+- Sending stays on REST + Server Actions; the socket only delivers. One write path.
+- The browser connects to the API directly for the socket only (`NEXT_PUBLIC_SOCKET_URL`, default `http://localhost:4310`).
+
+**Not done / watch:**
+- **Redis agent presence (part 2):** needs a Redis container in `docker-compose.yml` and the `ioredis` package; will ask before touching Docker. `users.is_online` stays unused (Redis will be the source of truth).
+- One API instance only: Socket.io rooms live in memory, so two instances would need the Redis adapter (also part 2 territory).
+- No rate limit on socket events (typing, join) beyond a 50-room cap per socket.
+- Reconnect was tested by restarting the backend, not by an artificially slow network.
+- New tickets do not appear in an open queue by themselves; that comes with Step 8's `ticket.created` event.
+- The 9 `npm audit` findings in the backend are unchanged (scaffold packages such as multer, tmp, undici); none are in the new Socket.io packages. Frontend: 0.
+- The browser test scripts (`ui-flow`, `live-flow`) are temporary files, not in the repo.
+
+**Next:** Step 7 part 2, Redis agent presence (ask before adding the Redis container).

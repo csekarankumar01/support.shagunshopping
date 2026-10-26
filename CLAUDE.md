@@ -8,7 +8,7 @@ This file is the single source of truth for the project. Read it fully at the st
 ## 1. Status
 
 - Planning is complete. The backend lives in `helpdesk-backend/` and the frontend in `helpdesk-frontend/`, both inside the project root; Postgres runs from the root `docker-compose.yml`.
-- Steps 1 to 6 are done (proof of concept reached in Step 5; frontend in Step 6, see `PROGRESS.md`). Current step: **Step 7** (see section 10).
+- Steps 1 to 6 are done (proof of concept reached in Step 5; frontend in Step 6, see `PROGRESS.md`). Current step: **Step 7**: live chat is built and tested; **Redis agent presence is still to do** (needs a Redis container, ask before touching Docker). See section 10.
 - **Ports (developer's instruction; other projects use the old ones):** API `4310`, Next.js `4311`, Postgres `5432`. Do not use 3000, 3001, 1338, 1339 or 8000. Pick new ports from the 43xx range and check they are free first.
 - Keep `PROGRESS.md` up to date (see section 12).
 
@@ -108,9 +108,11 @@ Rules to follow whenever writing code:
 
 ### Frontend (`helpdesk-frontend/`, run from that folder)
 - `npm run dev` (or `npm run build` then `npm run start`) serves on port 4311. `npm run lint` checks it. It finds the API through `API_URL` (default `http://localhost:4310`).
-- **Token rule:** the JWT lives only in an httpOnly cookie set by the Next server. The browser never receives it and never calls the API directly, so the API needs no CORS. Keep it that way; do not put the token in `localStorage` or in client components. (Step 7's Socket.io gateway is the planned exception: it will need an origin allowlist and a short-lived handshake token.)
+- **Token rule:** the JWT lives only in an httpOnly cookie set by the Next server. The browser never receives it and never calls the API directly, so the API needs no CORS. Keep it that way; do not put the token in `localStorage` or in client components. (The one exception is the Socket.io connection, which the browser opens to the API directly. It uses a separate 60-second socket-only token from `/api/socket-token`, and the API checks the handshake's Origin against `FRONTEND_ORIGIN`.)
 - **Every form's submit button must be a `SubmitButton`** (disabled until hydrated). With `cacheComponents`, Next 16.4.3 answers a plain no-JavaScript form post without the page shell, which shows a blank page. Timestamps use `<LocalTime>`; long user text needs `overflow-wrap:anywhere` so phones don't scroll sideways.
 - Comments from the API carry `authorRole` always and `authorEmail` only for staff viewers or the author. Do not expose staff emails to customers.
+- **Tokens are not interchangeable** (`src/auth/verify-token.ts` is the one place tokens are checked): the REST API refuses a socket token, the WebSocket refuses a login token, and a token with no expiry is refused. A socket is dropped when the login session it came from would have ended.
+- **Rooms** (`src/realtime/events.ts`) always start with the org id. Internal notes go to the ticket's staff-only room and never to the room a customer joins; customers get staff authors without their email. Anyone joining a ticket room passes `canAccessTicket` (`src/tickets/ticket-access.ts`), the same rule as the REST API. Do not copy that SQL elsewhere.
 - Role checks in the frontend only tidy the UI. The backend guards are the real enforcement.
 - `cacheComponents` is on: any component that reads `cookies()` or `searchParams`/`params` must sit inside `<Suspense>`.
 - Next.js 16 differs from older tutorials; read the docs in `helpdesk-frontend/node_modules/next/dist/docs/` before using an API from memory.
@@ -131,10 +133,10 @@ Enforced by role-based guards (RBAC).
 
 | Module | Base path | Endpoints |
 |---|---|---|
-| AuthModule | /api/v1/auth | POST /register-org (atomic tenant + admin creation), POST /login (issues JWT), POST /invite |
+| AuthModule | /api/v1/auth | POST /register-org (atomic tenant + admin creation), POST /login (issues JWT), POST /invite, POST /socket-token (60-second WebSocket-only token, added in Step 7) |
 | TicketsModule | /api/v1/tickets | GET / (paginated tenant queue), GET /:id (added in Step 6 for the detail page), POST / (saves ticket and emits `ticket.created`), PATCH /:id/status |
 | CommentsModule | /api/v1/tickets/:id/comments | GET / (strips internal notes for customers), POST / (saves and broadcasts over WebSocket) |
-| ChatGateway | wss://.../support | Validates the JWT on handshake and scopes each socket to its organisation's rooms |
+| SupportGateway (`src/realtime/`) | wss://.../support (Socket.io namespace `support`, WebSocket transport only) | Handshake needs a socket token and an allowed Origin. Events in: `ticket:join`, `ticket:leave`, `typing`. Events out: `comment:new`, `ticket:status`, `typing`, `session:expired`. Messages are written through the REST endpoints, which then publish |
 
 ---
 

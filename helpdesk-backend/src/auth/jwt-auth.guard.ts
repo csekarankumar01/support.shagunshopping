@@ -6,22 +6,16 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
-import { ROLES } from './role.js';
-import type { Role } from './role.js';
+import { verifyToken } from './verify-token.js';
+import type { AuthenticatedUser } from './verify-token.js';
 
-export interface AuthenticatedUser {
-  userId: string;
-  orgId: string;
-  role: Role;
-}
+export type { AuthenticatedUser } from './verify-token.js';
 
-export type AuthenticatedRequest = Request & { user: AuthenticatedUser };
-
-interface JwtPayload {
-  sub?: string;
-  orgId?: string;
-  role?: Role;
-}
+export type AuthenticatedRequest = Request & {
+  user: AuthenticatedUser;
+  /** When the login session behind this request ends (unix seconds). */
+  sessionExp: number;
+};
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -33,26 +27,9 @@ export class JwtAuthGuard implements CanActivate {
     if (scheme !== 'Bearer' || !token) {
       throw new UnauthorizedException('Missing bearer token');
     }
-    let payload: JwtPayload;
-    try {
-      payload = await this.jwt.verifyAsync<JwtPayload>(token);
-    } catch {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-    if (
-      !payload.sub ||
-      !payload.orgId ||
-      !payload.role ||
-      !ROLES.includes(payload.role)
-    ) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
-    // orgId comes only from the verified token, never from the request body, params or query.
-    request.user = {
-      userId: payload.sub,
-      orgId: payload.orgId,
-      role: payload.role,
-    };
+    const { user, sessionExp } = await verifyToken(this.jwt, token, 'access');
+    request.user = user;
+    request.sessionExp = sessionExp;
     return true;
   }
 }

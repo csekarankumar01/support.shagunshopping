@@ -18,6 +18,15 @@ export interface Ticket {
   createdAt: string;
 }
 
+/** Pushed over the socket when somebody is typing in a ticket you have open. */
+export interface TypingEvent {
+  ticketId: string;
+  userId: string;
+  role: Role;
+  isTyping: boolean;
+  isInternalNote: boolean;
+}
+
 export interface TicketPage {
   items: Ticket[];
   total: number;

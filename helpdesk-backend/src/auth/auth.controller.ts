@@ -38,6 +38,13 @@ export class AuthController {
     return this.authService.invite(req.user.orgId, dto);
   }
 
+  @Post('socket-token')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  socketToken(@Req() req: AuthenticatedRequest) {
+    return this.authService.issueSocketToken(req.user, req.sessionExp);
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   me(@Req() req: AuthenticatedRequest) {

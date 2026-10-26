@@ -14,7 +14,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, method: string, body?: unknown, token?: string): Promise<T> {
+/** The raw call, with no redirect on failure: for route handlers, which must answer with a status, not a page. */
+export async function apiRequest<T>(path: string, method: string, body?: unknown, token?: string): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
@@ -39,14 +40,14 @@ async function request<T>(path: string, method: string, body?: unknown, token?: 
 }
 
 /** For the two endpoints that need no login: register-org and login. */
-export const apiPublic = <T>(path: string, body: unknown) => request<T>(path, 'POST', body);
+export const apiPublic = <T>(path: string, body: unknown) => apiRequest<T>(path, 'POST', body);
 
 /** Calls the API as the logged-in user. No cookie, or a token the API rejects, sends the visitor to /login. */
 export async function api<T>(path: string, options: { method?: string; body?: unknown } = {}) {
   const token = await getToken();
   if (!token) redirect('/login');
   try {
-    return await request<T>(path, options.method ?? 'GET', options.body, token);
+    return await apiRequest<T>(path, options.method ?? 'GET', options.body, token);
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) redirect('/login?expired=1');
     throw err;

@@ -5,6 +5,7 @@ import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CommentsModule } from './comments/comments.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
 import { TicketsModule } from './tickets/tickets.module.js';
 
 @Module({
@@ -14,6 +15,7 @@ import { TicketsModule } from './tickets/tickets.module.js';
     AuthModule,
     TicketsModule,
     CommentsModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

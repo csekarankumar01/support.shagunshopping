@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PriorityBadge, StatusBadge } from '@/components/badges';
+import { LiveRefresh } from '@/components/live-refresh';
 import { LocalTime } from '@/components/local-time';
 import { api } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
@@ -52,6 +53,7 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
 
   return (
     <div className="space-y-5">
+      {staff && <LiveRefresh />}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">{staff ? 'Ticket queue' : 'My tickets'}</h1>
         {user.role === 'CUSTOMER' && (

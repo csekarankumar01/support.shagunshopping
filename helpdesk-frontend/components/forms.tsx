@@ -7,6 +7,7 @@ import { addComment, createTicket, updateStatus } from '@/app/actions/tickets';
 import { TICKET_PRIORITIES, TICKET_STATUSES } from '@/lib/constants';
 import type { TicketStatus } from '@/lib/constants';
 import type { FormState } from '@/lib/form-state';
+import { emitTyping, stopTyping } from '@/lib/socket';
 import { useHydrated } from '@/lib/use-hydrated';
 
 // Each form binds a Server Action to useActionState: React submits the form to the server, keeps the
@@ -135,7 +136,9 @@ export function StatusForm({ ticketId, current }: { ticketId: string; current: T
   const [state, action, pending] = useActionState(updateStatus.bind(null, ticketId), {});
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
-      <select name="status" defaultValue={current} aria-label="Status" className={`${inputClass} w-auto`}>
+      {/* key: a new status (ours or a colleague's, pushed live) mounts a fresh select showing it. Mounting is what
+          makes it survive React's reset of the form after an action; an updated select would snap back to OPEN. */}
+      <select key={current} name="status" defaultValue={current} aria-label="Status" className={`${inputClass} w-auto`}>
         {TICKET_STATUSES.map((s) => (
           <option key={s} value={s}>
             {s.replace('_', ' ')}
@@ -149,7 +152,10 @@ export function StatusForm({ ticketId, current }: { ticketId: string; current: T
 }
 
 export function CommentForm({ ticketId, canWriteInternalNote }: { ticketId: string; canWriteInternalNote: boolean }) {
-  const [state, action, pending] = useActionState(addComment.bind(null, ticketId), {});
+  const [state, action, pending] = useActionState(async (previous: FormState, data: FormData) => {
+    stopTyping(ticketId); // sending ends "is typing"
+    return addComment(ticketId, previous, data);
+  }, {});
   return (
     <form action={action} className="space-y-3">
       <textarea
@@ -161,6 +167,12 @@ export function CommentForm({ ticketId, canWriteInternalNote }: { ticketId: stri
         aria-label="Message"
         defaultValue={state.fields?.message}
         className={inputClass}
+        onInput={(event) => {
+          // Typing an internal note is announced to staff only (the server enforces it too).
+          const note = event.currentTarget.form?.elements.namedItem('isInternalNote') as HTMLInputElement | null;
+          emitTyping(ticketId, note?.checked ?? false);
+        }}
+        onBlur={() => stopTyping(ticketId)}
       />
       {canWriteInternalNote && (
         <label className="flex items-center gap-2 text-sm">

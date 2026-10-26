@@ -11,6 +11,8 @@ import { InviteDto } from './dto/invite.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterOrgDto } from './dto/register-org.dto.js';
 import type { Role } from './role.js';
+import { SOCKET_TOKEN_TTL_SECONDS } from './verify-token.js';
+import type { AuthenticatedUser } from './verify-token.js';
 
 const BCRYPT_COST = 10;
 const PG_UNIQUE_VIOLATION = '23505';
@@ -84,6 +86,25 @@ export class AuthService {
       role: user.role,
     });
     return { accessToken };
+  }
+
+  /**
+   * A 60-second token for the WebSocket handshake only. The browser cannot read the httpOnly login cookie, so the
+   * Next.js server calls this with it and hands the result to the page. It carries the end of the login session,
+   * so the socket is dropped when that session would have ended.
+   */
+  async issueSocketToken(user: AuthenticatedUser, sessionExp: number) {
+    const token = await this.jwt.signAsync(
+      {
+        sub: user.userId,
+        orgId: user.orgId,
+        role: user.role,
+        purpose: 'socket',
+        sessionExp,
+      },
+      { expiresIn: SOCKET_TOKEN_TTL_SECONDS },
+    );
+    return { token, expiresIn: SOCKET_TOKEN_TTL_SECONDS };
   }
 
   /** orgId must be the caller's own org taken from their verified token, never from the request body. */
