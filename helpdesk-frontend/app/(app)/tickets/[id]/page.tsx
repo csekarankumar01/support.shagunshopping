@@ -2,11 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { PriorityBadge, StatusBadge } from '@/components/badges';
+import { LocalTime } from '@/components/local-time';
 import { CommentForm, StatusForm } from '@/components/forms';
 import { ApiError, api } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { isStaff } from '@/lib/constants';
-import { formatDate } from '@/lib/format';
 import type { Ticket, TicketComment } from '@/lib/types';
 
 export default function TicketPage({ params }: { params: Promise<{ id: string }> }) {
@@ -35,10 +35,11 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
     throw err;
   }
 
-  // Comments carry only an author id, so the label is worked out from who the viewer is.
-  const authorLabel = (authorId: string) => {
-    if (authorId === user.userId) return 'You';
-    return authorId === ticket.requesterId ? 'Customer' : 'Support';
+  // The API sends the author's role always, and their address only when the viewer may see it.
+  const authorLabel = (comment: TicketComment) => {
+    if (comment.authorId === user.userId) return 'You';
+    if (comment.authorRole === 'CUSTOMER') return comment.authorEmail ?? 'Customer';
+    return comment.authorEmail ? `${comment.authorEmail} (${comment.authorRole.toLowerCase()})` : 'Support';
   };
 
   return (
@@ -48,12 +49,12 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
       </Link>
 
       <div className="space-y-3">
-        <h1 className="text-xl font-semibold">{ticket.subject}</h1>
+        <h1 className="text-xl font-semibold [overflow-wrap:anywhere]">{ticket.subject}</h1>
         <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
-          <span>Opened {formatDate(ticket.createdAt)}</span>
-          {staff && <span>SLA deadline {formatDate(ticket.slaDeadline)}</span>}
+          <span>Opened <LocalTime iso={ticket.createdAt} /></span>
+          {staff && <span>SLA deadline <LocalTime iso={ticket.slaDeadline} /></span>}
         </div>
         {staff && <StatusForm ticketId={ticket.id} current={ticket.status} />}
       </div>
@@ -69,13 +70,13 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
                 key={comment.id}
                 className={
                   comment.isInternalNote
-                    ? 'rounded-md border border-amber-300 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950'
-                    : 'rounded-md border border-neutral-200 px-4 py-3 dark:border-neutral-800'
+                    ? 'rounded-md border border-amber-300 bg-amber-50 px-4 py-3 [overflow-wrap:anywhere] dark:border-amber-800 dark:bg-amber-950'
+                    : 'rounded-md border border-neutral-200 px-4 py-3 [overflow-wrap:anywhere] dark:border-neutral-800'
                 }
               >
                 <div className="mb-1 flex items-center gap-2 text-xs text-neutral-500">
-                  <span className="font-medium">{authorLabel(comment.authorId)}</span>
-                  <span>{formatDate(comment.createdAt)}</span>
+                  <span className="font-medium">{authorLabel(comment)}</span>
+                  <span><LocalTime iso={comment.createdAt} /></span>
                   {comment.isInternalNote && (
                     <span className="rounded-full bg-amber-200 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-800 dark:text-amber-100">
                       Internal note

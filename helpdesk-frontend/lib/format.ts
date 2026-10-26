@@ -1,8 +1,9 @@
-// Fixed to UTC so the server render never depends on the server's own timezone.
-const formatter = new Intl.DateTimeFormat('en-GB', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-  timeZone: 'UTC',
-});
+const options = { dateStyle: 'medium', timeStyle: 'short' } as const;
 
-export const formatDate = (iso: string) => `${formatter.format(new Date(iso))} UTC`;
+// The server renders in UTC so its output never depends on the server's own timezone.
+const utc = new Intl.DateTimeFormat('en-GB', { ...options, timeZone: 'UTC' });
+const local = new Intl.DateTimeFormat('en-GB', options);
+
+export const formatUtc = (iso: string) => `${utc.format(new Date(iso))} UTC`;
+/** In the viewer's own timezone, so it only makes sense in the browser. */
+export const formatLocal = (iso: string) => local.format(new Date(iso));

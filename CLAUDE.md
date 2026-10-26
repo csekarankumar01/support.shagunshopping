@@ -109,6 +109,8 @@ Rules to follow whenever writing code:
 ### Frontend (`helpdesk-frontend/`, run from that folder)
 - `npm run dev` (or `npm run build` then `npm run start`) serves on port 4311. `npm run lint` checks it. It finds the API through `API_URL` (default `http://localhost:4310`).
 - **Token rule:** the JWT lives only in an httpOnly cookie set by the Next server. The browser never receives it and never calls the API directly, so the API needs no CORS. Keep it that way; do not put the token in `localStorage` or in client components. (Step 7's Socket.io gateway is the planned exception: it will need an origin allowlist and a short-lived handshake token.)
+- **Every form's submit button must be a `SubmitButton`** (disabled until hydrated). With `cacheComponents`, Next 16.4.3 answers a plain no-JavaScript form post without the page shell, which shows a blank page. Timestamps use `<LocalTime>`; long user text needs `overflow-wrap:anywhere` so phones don't scroll sideways.
+- Comments from the API carry `authorRole` always and `authorEmail` only for staff viewers or the author. Do not expose staff emails to customers.
 - Role checks in the frontend only tidy the UI. The backend guards are the real enforcement.
 - `cacheComponents` is on: any component that reads `cookies()` or `searchParams`/`params` must sit inside `<Suspense>`.
 - Next.js 16 differs from older tutorials; read the docs in `helpdesk-frontend/node_modules/next/dist/docs/` before using an API from memory.

@@ -29,6 +29,9 @@ export interface TicketComment {
   id: string;
   ticketId: string;
   authorId: string;
+  authorRole: Role;
+  /** Null when the viewer is a customer and the author is someone else (staff addresses stay private). */
+  authorEmail: string | null;
   message: string;
   isInternalNote: boolean;
   createdAt: string;

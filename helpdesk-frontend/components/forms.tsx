@@ -7,15 +7,31 @@ import { addComment, createTicket, updateStatus } from '@/app/actions/tickets';
 import { TICKET_PRIORITIES, TICKET_STATUSES } from '@/lib/constants';
 import type { TicketStatus } from '@/lib/constants';
 import type { FormState } from '@/lib/form-state';
+import { useHydrated } from '@/lib/use-hydrated';
 
 // Each form binds a Server Action to useActionState: React submits the form to the server, keeps the
-// action's returned FormState, and reports `pending` while it runs. The inputs are plain HTML inputs,
-// so a form still submits even before this component's JavaScript has loaded.
+// action's returned FormState, and reports `pending` while it runs. Submit buttons stay disabled until the
+// page's JavaScript has loaded (see SubmitButton).
 
 const inputClass =
   'w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-neutral-700';
 const buttonClass =
   'rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60';
+
+/**
+ * Disabled until the page's JavaScript has loaded. Before that, a click would make the browser post the form
+ * the old-fashioned way, and with cacheComponents on, Next 16.4.3 answers such a post without the page's HTML
+ * shell, so the visitor would see a blank page. Waiting a moment avoids that (a disabled default button also
+ * stops Enter from submitting).
+ */
+function SubmitButton({ pending, idle, busy }: { pending: boolean; idle: string; busy: string }) {
+  const hydrated = useHydrated();
+  return (
+    <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+      {pending ? busy : idle}
+    </button>
+  );
+}
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -62,9 +78,7 @@ export function LoginForm() {
         <input name="password" type="password" required className={inputClass} autoComplete="current-password" />
       </Field>
       <Feedback state={state} />
-      <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? 'Signing in…' : 'Sign in'}
-      </button>
+      <SubmitButton pending={pending} idle="Sign in" busy="Signing in…" />
     </form>
   );
 }
@@ -94,9 +108,7 @@ export function RegisterForm() {
         <input name="password" type="password" required minLength={8} className={inputClass} autoComplete="new-password" />
       </Field>
       <Feedback state={state} />
-      <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? 'Creating…' : 'Create organisation'}
-      </button>
+      <SubmitButton pending={pending} idle="Create organisation" busy="Creating…" />
     </form>
   );
 }
@@ -114,9 +126,7 @@ export function NewTicketForm() {
         </select>
       </Field>
       <Feedback state={state} />
-      <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? 'Submitting…' : 'Submit ticket'}
-      </button>
+      <SubmitButton pending={pending} idle="Submit ticket" busy="Submitting…" />
     </form>
   );
 }
@@ -132,9 +142,7 @@ export function StatusForm({ ticketId, current }: { ticketId: string; current: T
           </option>
         ))}
       </select>
-      <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? 'Saving…' : 'Update status'}
-      </button>
+      <SubmitButton pending={pending} idle="Update status" busy="Saving…" />
       <Feedback state={state} />
     </form>
   );
@@ -161,9 +169,7 @@ export function CommentForm({ ticketId, canWriteInternalNote }: { ticketId: stri
         </label>
       )}
       <Feedback state={state} />
-      <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? 'Sending…' : 'Send'}
-      </button>
+      <SubmitButton pending={pending} idle="Send" busy="Sending…" />
     </form>
   );
 }
@@ -185,9 +191,7 @@ export function InviteForm() {
         </select>
       </Field>
       <Feedback state={state} />
-      <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? 'Inviting…' : 'Invite user'}
-      </button>
+      <SubmitButton pending={pending} idle="Invite user" busy="Inviting…" />
     </form>
   );
 }

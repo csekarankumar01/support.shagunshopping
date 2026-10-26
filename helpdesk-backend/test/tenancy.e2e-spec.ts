@@ -64,14 +64,12 @@ describe('multi-tenancy through the API', () => {
 
     it('rejects a duplicate organisation slug with 409 and leaves no orphan rows', async () => {
       const before = await owner.query('SELECT count(*)::int AS n FROM users');
-      const res = await http(app)
-        .post(`${API}/auth/register-org`)
-        .send({
-          orgName: 'Dup',
-          orgSlug: a.slug,
-          email: 'other@x.com',
-          password: PASSWORD,
-        });
+      const res = await http(app).post(`${API}/auth/register-org`).send({
+        orgName: 'Dup',
+        orgSlug: a.slug,
+        email: 'other@x.com',
+        password: PASSWORD,
+      });
       expect(res.status).toBe(409);
       const after = await owner.query('SELECT count(*)::int AS n FROM users');
       expect(after.rows[0].n).toBe(before.rows[0].n);
@@ -85,13 +83,11 @@ describe('multi-tenancy through the API', () => {
           email: 'admin@shared.com',
           password: PASSWORD,
         });
-      const wrongPw = await http(app)
-        .post(`${API}/auth/login`)
-        .send({
-          orgSlug: a.slug,
-          email: 'admin@shared.com',
-          password: 'WrongPass1',
-        });
+      const wrongPw = await http(app).post(`${API}/auth/login`).send({
+        orgSlug: a.slug,
+        email: 'admin@shared.com',
+        password: 'WrongPass1',
+      });
       const wrongEmail = await http(app)
         .post(`${API}/auth/login`)
         .send({ orgSlug: a.slug, email: 'ghost@x.com', password: PASSWORD });
@@ -417,6 +413,52 @@ describe('multi-tenancy through the API', () => {
         .send({ message: 'who am I' });
       const me = await http(app).get(`${API}/auth/me`).set(auth(a.agent));
       expect(res.body.authorId).toBe(me.body.userId);
+    });
+
+    it('shows who wrote each comment: staff see addresses, a customer sees their own and only the role of staff', async () => {
+      type Author = {
+        authorRole: string;
+        authorEmail: string | null;
+        isInternalNote: boolean;
+      };
+      const list = async (token: string) =>
+        (
+          await http(app)
+            .get(`${API}/tickets/${ticketA1}/comments`)
+            .set(auth(token))
+        ).body as Author[];
+
+      const asAgent = await list(a.agent);
+      expect(
+        asAgent.find((c) => c.authorRole === 'CUSTOMER')?.authorEmail,
+      ).toBe('cust1@x.com');
+      expect(asAgent.find((c) => c.authorRole === 'AGENT')?.authorEmail).toBe(
+        'agent@x.com',
+      );
+
+      const asCustomer = await list(a.cust1);
+      expect(
+        asCustomer.find((c) => c.authorRole === 'CUSTOMER')?.authorEmail,
+      ).toBe('cust1@x.com');
+      const staffComments = asCustomer.filter((c) => c.authorRole === 'AGENT');
+      expect(staffComments.length).toBeGreaterThan(0);
+      expect(staffComments.every((c) => c.authorEmail === null)).toBe(true);
+      // the agent's address appears nowhere in what the customer received
+      expect(JSON.stringify(asCustomer)).not.toContain('agent@x.com');
+    });
+
+    it('returns the same author fields when a comment is created, with the same redaction', async () => {
+      const post = (token: string) =>
+        http(app)
+          .post(`${API}/tickets/${ticketA1}/comments`)
+          .set(auth(token))
+          .send({ message: 'shape check' });
+      const byAgent = await post(a.agent);
+      expect(byAgent.body.authorRole).toBe('AGENT');
+      expect(byAgent.body.authorEmail).toBe('agent@x.com');
+      const byCustomer = await post(a.cust1);
+      expect(byCustomer.body.authorRole).toBe('CUSTOMER');
+      expect(byCustomer.body.authorEmail).toBe('cust1@x.com');
     });
   });
 

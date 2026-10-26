@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PriorityBadge, StatusBadge } from '@/components/badges';
+import { LocalTime } from '@/components/local-time';
 import { api } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { TICKET_PRIORITIES, TICKET_STATUSES, isStaff } from '@/lib/constants';
-import { formatDate } from '@/lib/format';
 import type { TicketPage } from '@/lib/types';
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
@@ -112,7 +112,7 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
             <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
               {data.items.map((ticket) => (
                 <tr key={ticket.id}>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 [overflow-wrap:anywhere]">
                     <Link href={`/tickets/${ticket.id}`} className="font-medium text-blue-600 hover:underline">
                       {ticket.subject}
                     </Link>
@@ -123,8 +123,8 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
                   <td className="px-4 py-2">
                     <PriorityBadge priority={ticket.priority} />
                   </td>
-                  {staff && <td className="px-4 py-2 whitespace-nowrap">{formatDate(ticket.slaDeadline)}</td>}
-                  <td className="px-4 py-2 whitespace-nowrap">{formatDate(ticket.createdAt)}</td>
+                  {staff && <td className="px-4 py-2 whitespace-nowrap"><LocalTime iso={ticket.slaDeadline} /></td>}
+                  <td className="px-4 py-2 whitespace-nowrap"><LocalTime iso={ticket.createdAt} /></td>
                 </tr>
               ))}
             </tbody>
