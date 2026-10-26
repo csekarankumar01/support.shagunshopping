@@ -5,9 +5,8 @@ import { useEffect } from 'react';
 import { acquireSocket, onReconnect } from '@/lib/socket';
 
 /**
- * For the staff queue: when a ticket in the organisation changes status, or a colleague comes online or goes
- * offline, reload the list's data from the
- * server. (New tickets will arrive the same way once Step 8's event bus can announce them.)
+ * For staff pages (queue, dashboard): when anything they show changes (a new ticket, a status or assignee change,
+ * an SLA breach, a colleague coming online or going offline), reload the page's data from the server.
  */
 export function LiveRefresh() {
   const router = useRouter();
@@ -20,11 +19,17 @@ export function LiveRefresh() {
     };
     socket.on('ticket:status', refreshSoon);
     socket.on('presence:changed', refreshSoon);
+    socket.on('ticket:created', refreshSoon);
+    socket.on('ticket:assigned', refreshSoon);
+    socket.on('sla:breached', refreshSoon);
     const stopReloading = onReconnect(refreshSoon);
     return () => {
       clearTimeout(pending);
       socket.off('ticket:status', refreshSoon);
       socket.off('presence:changed', refreshSoon);
+      socket.off('ticket:created', refreshSoon);
+      socket.off('ticket:assigned', refreshSoon);
+      socket.off('sla:breached', refreshSoon);
       stopReloading();
       release();
     };

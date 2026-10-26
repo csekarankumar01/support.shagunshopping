@@ -40,6 +40,7 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
   private readonly brokers: string[];
   private readonly clientId = 'helpdesk-api';
   private readonly groupPrefix: string;
+  private readonly topicPrefix: string;
   private readonly fallbackMode: 'earliest' | 'latest';
   private producer?: Producer<string, string, string, string>;
   private readonly consumers: Consumer<string, string, string, string>[] = [];
@@ -53,6 +54,8 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
       .split(',')
       .map((broker) => broker.trim());
     this.groupPrefix = config.get<string>('KAFKA_GROUP_PREFIX', 'helpdesk');
+    // Tests publish to their own topics ("test.ticket.created"), so they never mix with real events.
+    this.topicPrefix = config.get<string>('KAFKA_TOPIC_PREFIX', '');
     // A new consumer group starts at the beginning, so an event published before its first start is not skipped.
     this.fallbackMode =
       config.get<string>('KAFKA_FALLBACK_MODE', 'earliest') === 'latest'
@@ -74,7 +77,10 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
   }
 
   private async ensureTopics() {
-    const topics = Object.values(TOPICS).flatMap((t) => [t, `${t}.dlq`]);
+    const topics = Object.values(TOPICS).flatMap((t) => [
+      this.topicName(t),
+      `${this.topicName(t)}.dlq`,
+    ]);
     for (let attempt = 1; !this.stopping; attempt++) {
       const admin = new Admin({
         clientId: this.clientId,
@@ -101,6 +107,11 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
         await sleep(Math.min(1000 * attempt, 10_000));
       }
     }
+  }
+
+  /** The real Kafka topic for an event type, e.g. "ticket.created" (or "test.ticket.created" in tests). */
+  topicName(eventType: string) {
+    return `${this.topicPrefix}${eventType}`;
   }
 
   async send(messages: OutgoingMessage[]) {
@@ -136,7 +147,7 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
         this.consumers.push(consumer);
         try {
           const stream = await consumer.consume({
-            topics,
+            topics: topics.map((topic) => this.topicName(topic)),
             mode: 'committed',
             fallbackMode: this.fallbackMode,
             autocommit: false,

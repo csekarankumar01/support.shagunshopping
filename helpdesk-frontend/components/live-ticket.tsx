@@ -3,12 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PriorityBadge, StatusBadge } from '@/components/badges';
-import { StatusForm } from '@/components/forms';
+import { AssignForm, StatusForm } from '@/components/forms';
 import { LocalTime } from '@/components/local-time';
 import { isStaff } from '@/lib/constants';
-import type { Role, TicketStatus } from '@/lib/constants';
+import type { Role, TicketPriority, TicketStatus } from '@/lib/constants';
 import { acquireSocket, joinTicket, onReconnect, useConnectionState } from '@/lib/socket';
-import type { Ticket, TicketComment, TypingEvent } from '@/lib/types';
+import type { TeamMember, Ticket, TicketComment, TypingEvent } from '@/lib/types';
 
 interface Viewer {
   userId: string;
@@ -24,7 +24,18 @@ interface Typer {
  * The part of the ticket page that changes while you watch it: status, conversation, "is typing".
  * The server renders it with the data as of the page load; the socket then adds whatever happens next.
  */
-export function LiveTicket({ ticket, comments, viewer }: { ticket: Ticket; comments: TicketComment[]; viewer: Viewer }) {
+export function LiveTicket({
+  ticket,
+  comments,
+  viewer,
+  team,
+}: {
+  ticket: Ticket;
+  comments: TicketComment[];
+  viewer: Viewer;
+  /** Staff of the organisation (empty for customers): who a ticket can be assigned to. */
+  team: TeamMember[];
+}) {
   const router = useRouter();
   const staff = isStaff(viewer.role);
   const connection = useConnectionState();
@@ -41,6 +52,24 @@ export function LiveTicket({ ticket, comments, viewer }: { ticket: Ticket; comme
     setLiveStatus(null);
   }
   const status = liveStatus ?? ticket.status;
+
+  // Same idea for the assignee and for an SLA breach (which also raises the priority) pushed to staff.
+  const [liveAssignee, setLiveAssignee] = useState<{ id: string | null } | null>(null);
+  const [serverAssignee, setServerAssignee] = useState(ticket.agentId);
+  if (ticket.agentId !== serverAssignee) {
+    setServerAssignee(ticket.agentId);
+    setLiveAssignee(null);
+  }
+  const assigneeId = liveAssignee ? liveAssignee.id : ticket.agentId;
+  const [liveBreach, setLiveBreach] = useState<{ priority: TicketPriority } | null>(null);
+  const [serverBreach, setServerBreach] = useState(ticket.slaBreachedAt);
+  if (ticket.slaBreachedAt !== serverBreach) {
+    setServerBreach(ticket.slaBreachedAt);
+    setLiveBreach(null);
+  }
+  const breached = Boolean(ticket.slaBreachedAt) || liveBreach !== null;
+  const priority = liveBreach?.priority ?? ticket.priority;
+  const assignee = team.find((member) => member.userId === assigneeId);
 
   useEffect(() => {
     const timers = typerTimers.current;
@@ -64,6 +93,12 @@ export function LiveTicket({ ticket, comments, viewer }: { ticket: Ticket; comme
     const onStatus = (change: { ticketId: string; status: TicketStatus }) => {
       if (change.ticketId === ticket.id) setLiveStatus(change.status);
     };
+    const onAssigned = (change: { ticketId: string; agentId: string | null }) => {
+      if (change.ticketId === ticket.id) setLiveAssignee({ id: change.agentId });
+    };
+    const onBreached = (alert: { ticketId: string; priority: TicketPriority }) => {
+      if (alert.ticketId === ticket.id) setLiveBreach({ priority: alert.priority });
+    };
     const onTyping = (event: TypingEvent) => {
       if (event.ticketId !== ticket.id || event.userId === viewer.userId) return;
       if (!event.isTyping) return forget(event.userId);
@@ -76,11 +111,15 @@ export function LiveTicket({ ticket, comments, viewer }: { ticket: Ticket; comme
     socket.on('comment:new', onComment);
     socket.on('ticket:status', onStatus);
     socket.on('typing', onTyping);
+    socket.on('ticket:assigned', onAssigned);
+    socket.on('sla:breached', onBreached);
     const stopReloading = onReconnect(() => router.refresh());
     return () => {
       socket.off('comment:new', onComment);
       socket.off('ticket:status', onStatus);
       socket.off('typing', onTyping);
+      socket.off('ticket:assigned', onAssigned);
+      socket.off('sla:breached', onBreached);
       stopReloading();
       leave();
       release();
@@ -121,7 +160,12 @@ export function LiveTicket({ ticket, comments, viewer }: { ticket: Ticket; comme
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
           <StatusBadge status={status} />
-          <PriorityBadge priority={ticket.priority} />
+          <PriorityBadge priority={priority} />
+          {staff && breached && (
+            <span className="inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white" data-testid="sla-breached">
+              SLA breached
+            </span>
+          )}
           <span>
             Opened <LocalTime iso={ticket.createdAt} />
           </span>
@@ -135,7 +179,22 @@ export function LiveTicket({ ticket, comments, viewer }: { ticket: Ticket; comme
             {connection === 'live' ? 'Live' : 'Reconnecting…'}
           </span>
         </div>
-        {staff && <StatusForm ticketId={ticket.id} current={status} />}
+        {staff && (
+          <>
+            <StatusForm ticketId={ticket.id} current={status} />
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-neutral-600 dark:text-neutral-400" data-testid="assignee">
+                Assigned to: {assignee ? assignee.email : 'nobody'}
+              </span>
+              <AssignForm ticketId={ticket.id} current={assigneeId} staff={team} myId={viewer.userId} />
+            </div>
+            {ticket.firstResponseAt && (
+              <p className="text-xs text-neutral-500">
+                First reply <LocalTime iso={ticket.firstResponseAt} />
+              </p>
+            )}
+          </>
+        )}
       </div>
 
       <section className="space-y-3">

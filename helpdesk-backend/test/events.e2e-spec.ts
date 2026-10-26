@@ -229,7 +229,7 @@ describe('events: outbox, Kafka, notifications, audit and the SLA engine', () =>
         deserializers: stringDeserializers,
       });
       const stream = await probe.consume({
-        topics: ['ticket.created'],
+        topics: [kafka.topicName('ticket.created')],
         mode: 'latest',
         autocommit: true,
       });
@@ -276,7 +276,7 @@ describe('events: outbox, Kafka, notifications, audit and the SLA engine', () =>
       // Replay exactly what the relay sent, as a broker redelivery would.
       await kafka.send([
         {
-          topic: 'ticket.created',
+          topic: kafka.topicName('ticket.created'),
           key: a.orgId,
           value: JSON.stringify({
             id: 'replayed',

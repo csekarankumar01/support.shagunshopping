@@ -6,15 +6,17 @@ import { LocalTime } from '@/components/local-time';
 import { api } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { TICKET_PRIORITIES, TICKET_STATUSES, isStaff } from '@/lib/constants';
-import type { TicketPage } from '@/lib/types';
+import type { TeamMember, TicketPage } from '@/lib/types';
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
 const PAGE_SIZE = 20;
+const ASSIGNED = ['me', 'unassigned'] as const;
 
+const first = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 /** The one query-string value a filter may carry: a known option, or nothing. */
 const pick = <T extends string>(value: string | string[] | undefined, allowed: readonly T[]) =>
-  allowed.find((option) => option === value);
+  allowed.find((option) => option === first(value));
 
 export default function TicketsPage({ searchParams }: { searchParams: SearchParams }) {
   return (
@@ -32,27 +34,37 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
   // cannot make the API answer 400.
   const status = pick(params.status, TICKET_STATUSES);
   const priority = pick(params.priority, TICKET_PRIORITIES);
-  const requested = Number(Array.isArray(params.page) ? params.page[0] : params.page);
+  const assigned = staff ? pick(params.assigned, ASSIGNED) : undefined;
+  const breached = staff && first(params.breached) === 'true';
+  const q = (first(params.q) ?? '').trim().slice(0, 100);
+  const requested = Number(first(params.page));
   const page = Number.isInteger(requested) && requested >= 1 ? requested : 1;
 
-  const query = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
-  if (status) query.set('status', status);
-  if (priority) query.set('priority', priority);
-  const [data, online] = await Promise.all([
+  const filters = new URLSearchParams();
+  if (status) filters.set('status', status);
+  if (priority) filters.set('priority', priority);
+  if (assigned) filters.set('assigned', assigned);
+  if (breached) filters.set('breached', 'true');
+  if (q) filters.set('q', q);
+
+  const query = new URLSearchParams(filters);
+  query.set('page', String(page));
+  query.set('limit', String(PAGE_SIZE));
+  const [data, online, team] = await Promise.all([
     api<TicketPage>(`/api/v1/tickets?${query}`),
     staff ? api<{ userId: string; email: string }[]>('/api/v1/presence') : Promise.resolve([]),
+    staff ? api<TeamMember[]>('/api/v1/team') : Promise.resolve([]),
   ]);
+  const people = new Map(team.map((member) => [member.userId, member.email]));
 
   const lastPage = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
   const pageHref = (target: number) => {
-    const next = new URLSearchParams();
-    if (status) next.set('status', status);
-    if (priority) next.set('priority', priority);
+    const next = new URLSearchParams(filters);
     next.set('page', String(target));
     return `/tickets?${next}`;
   };
-  const selectClass =
-    'rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700';
+  const filtered = filters.size > 0;
+  const selectClass = 'rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700';
 
   return (
     <div className="space-y-5">
@@ -74,6 +86,15 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
 
       {/* A plain GET form: choosing filters just reloads this page with a new query string. */}
       <form className="flex flex-wrap items-center gap-2" action="/tickets">
+        <input
+          name="q"
+          type="search"
+          defaultValue={q}
+          placeholder="Search subjects…"
+          aria-label="Search subjects"
+          maxLength={100}
+          className={`${selectClass} w-44`}
+        />
         <select name="status" defaultValue={status ?? ''} aria-label="Filter by status" className={selectClass}>
           <option value="">All statuses</option>
           {TICKET_STATUSES.map((s) => (
@@ -90,10 +111,23 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
             </option>
           ))}
         </select>
+        {staff && (
+          <>
+            <select name="assigned" defaultValue={assigned ?? ''} aria-label="Filter by assignee" className={selectClass}>
+              <option value="">Anyone</option>
+              <option value="me">Assigned to me</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+            <label className="flex items-center gap-1.5 text-sm">
+              <input type="checkbox" name="breached" value="true" defaultChecked={breached} />
+              SLA breached
+            </label>
+          </>
+        )}
         <button type="submit" className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700">
           Filter
         </button>
-        {(status || priority) && (
+        {filtered && (
           <Link href="/tickets" className="text-sm text-blue-600 hover:underline">
             Clear
           </Link>
@@ -102,11 +136,7 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
 
       {data.items.length === 0 ? (
         <p className="rounded-md border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-500 dark:border-neutral-700">
-          {status || priority
-            ? 'No tickets match these filters.'
-            : staff
-              ? 'The queue is empty.'
-              : 'You have not raised any tickets yet.'}
+          {filtered ? 'No tickets match these filters.' : staff ? 'The queue is empty.' : 'You have not raised any tickets yet.'}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
@@ -116,6 +146,7 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
                 <th className="px-4 py-2 font-medium">Subject</th>
                 <th className="px-4 py-2 font-medium">Status</th>
                 <th className="px-4 py-2 font-medium">Priority</th>
+                {staff && <th className="px-4 py-2 font-medium">Assignee</th>}
                 {staff && <th className="px-4 py-2 font-medium">SLA deadline</th>}
                 <th className="px-4 py-2 font-medium">Opened</th>
               </tr>
@@ -134,8 +165,22 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
                   <td className="px-4 py-2">
                     <PriorityBadge priority={ticket.priority} />
                   </td>
-                  {staff && <td className="px-4 py-2 whitespace-nowrap"><LocalTime iso={ticket.slaDeadline} /></td>}
-                  <td className="px-4 py-2 whitespace-nowrap"><LocalTime iso={ticket.createdAt} /></td>
+                  {staff && (
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      {ticket.agentId ? (people.get(ticket.agentId) ?? 'Unknown') : <span className="text-neutral-500">Unassigned</span>}
+                    </td>
+                  )}
+                  {staff && (
+                    <td className="px-4 py-2 whitespace-nowrap">
+                      <LocalTime iso={ticket.slaDeadline} />
+                      {ticket.slaBreachedAt && (
+                        <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Breached</span>
+                      )}
+                    </td>
+                  )}
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    <LocalTime iso={ticket.createdAt} />
+                  </td>
                 </tr>
               ))}
             </tbody>

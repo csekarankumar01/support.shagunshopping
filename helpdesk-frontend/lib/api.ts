@@ -1,4 +1,5 @@
 import 'server-only';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getToken } from './session';
 
@@ -14,6 +15,19 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * The API rate-limits by client address, but every call from here would otherwise look like it came from this
+ * server. Pass the visitor's address along (the API only believes it when TRUST_PROXY says it sits behind us).
+ */
+async function clientAddress(): Promise<Record<string, string>> {
+  try {
+    const forwarded = (await headers()).get('x-forwarded-for');
+    return forwarded ? { 'X-Forwarded-For': forwarded } : {};
+  } catch {
+    return {}; // called outside a request
+  }
+}
+
 /** The raw call, with no redirect on failure: for route handlers, which must answer with a status, not a page. */
 export async function apiRequest<T>(path: string, method: string, body?: unknown, token?: string): Promise<T> {
   let res: Response;
@@ -23,6 +37,7 @@ export async function apiRequest<T>(path: string, method: string, body?: unknown
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
+        ...(await clientAddress()),
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
@@ -36,6 +51,7 @@ export async function apiRequest<T>(path: string, method: string, body?: unknown
     const message = Array.isArray(data?.message) ? data.message.join('. ') : data?.message;
     throw new ApiError(res.status, message ?? `Request failed (${res.status})`);
   }
+  if (res.status === 204) return undefined as T; // e.g. DELETE: no body to parse
   return res.json() as Promise<T>;
 }
 

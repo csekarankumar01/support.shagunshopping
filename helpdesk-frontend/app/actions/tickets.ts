@@ -54,3 +54,17 @@ export async function addComment(ticketId: string, _prev: FormState, data: FormD
   revalidatePath(`/tickets/${ticketId}`);
   return { ok: isInternalNote ? 'Internal note added.' : 'Reply sent.' };
 }
+
+/** An empty choice means "nobody": the ticket becomes unassigned. */
+export async function assignTicket(ticketId: string, _prev: FormState, data: FormData): Promise<FormState> {
+  const agentId = text(data, 'agentId') || null;
+  try {
+    await api(`/api/v1/tickets/${ticketId}/assign`, { method: 'PATCH', body: { agentId } });
+  } catch (err) {
+    if (err instanceof ApiError) return { error: err.message };
+    throw err;
+  }
+  revalidatePath(`/tickets/${ticketId}`);
+  revalidatePath('/tickets');
+  return { ok: agentId ? 'Assigned.' : 'Unassigned.' };
+}

@@ -16,6 +16,8 @@ export interface Ticket {
   agentId: string | null;
   slaDeadline: string;
   createdAt: string;
+  firstResponseAt: string | null;
+  slaBreachedAt: string | null;
 }
 
 /** Pushed over the socket when somebody is typing in a ticket you have open. */
@@ -44,4 +46,49 @@ export interface TicketComment {
   message: string;
   isInternalNote: boolean;
   createdAt: string;
+}
+
+export interface TeamMember {
+  userId: string;
+  email: string;
+  role: Role;
+  createdAt: string;
+}
+
+export interface CannedResponse {
+  id: string;
+  title: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Stats {
+  total: number;
+  open: number;
+  inProgress: number;
+  resolved: number;
+  closed: number;
+  activeLow: number;
+  activeMedium: number;
+  activeHigh: number;
+  activeUrgent: number;
+  breached: number;
+  unassigned: number;
+  assignedToMe: number;
+  createdLast24h: number;
+  avgFirstResponseSeconds: number | null;
+}
+
+export interface NotificationRecord {
+  id: string;
+  ticketId: string;
+  kind: 'TICKET_RECEIPT' | 'SLA_BREACH_ALERT';
+  recipientEmail: string;
+  subject: string;
+  status: 'PENDING' | 'SENT' | 'FAILED';
+  attempts: number;
+  lastError: string | null;
+  createdAt: string;
+  sentAt: string | null;
 }

@@ -8,7 +8,7 @@ This file is the single source of truth for the project. Read it fully at the st
 ## 1. Status
 
 - Planning is complete. The backend lives in `helpdesk-backend/` and the frontend in `helpdesk-frontend/`, both inside the project root; Postgres runs from the root `docker-compose.yml`.
-- Steps 1 to 6 are done (proof of concept reached in Step 5; frontend in Step 6, see `PROGRESS.md`). Current step: **Step 7**: live chat is built and tested; **Redis agent presence is still to do** (needs a Redis container, ask before touching Docker). See section 10.
+- **All ten plan steps are built and tested** (see `PROGRESS.md`; Steps 7 to 10 were built in one autonomous pass). `docker compose up -d --build` runs the whole system; `README.md` explains running and developing it.
 - **Ports (developer's instruction; other projects use the old ones):** API `4310`, Next.js `4311`, Postgres `5432`. Do not use 3000, 3001, 1338, 1339 or 8000. Pick new ports from the 43xx range and check they are free first.
 - Keep `PROGRESS.md` up to date (see section 12).
 
@@ -41,10 +41,10 @@ The developer is building this to learn NestJS, Docker and Kafka in practice, an
 | Backend | NestJS (modular) | Domain modules: Auth, Org, Tickets, Comments, Notification. Controllers handle requests, services hold the logic. Structure that makes later extraction into microservices straightforward |
 | Database | PostgreSQL | Relational hierarchy (orgs, users, tickets, comments, audit logs) benefits from joins, constraints and ACID transactions. Chosen over MongoDB for this reason |
 | Real-time | Socket.io via NestJS WebSocket Gateway | Live ticket chat, typing indicators, status broadcasts, scoped to tenant rooms |
-| Event bus | Apache Kafka | Decouples ticket creation from notifications, SLA registration and dashboard counters |
+| Event bus | Apache Kafka protocol, **Redpanda** in Docker (decided, section 13) via `@platformatic/kafka` | Decouples ticket creation from notifications, SLA registration and audit. Events go through a transactional outbox (`outbox_events`, relay in `src/events/`) |
 | Cache / timers | Redis | Online agent presence, API rate limiting, sorted-set SLA timers |
 | Data access | `pg` driver, plain SQL (no ORM) | Developer's decision: write SQL by hand to build SQL skills. Tenant queries go through `DatabaseService.tenantQuery` / `tenantTransaction` (org id is always `$1`, RLS context is set per transaction). The app connects as the restricted role `helpdesk_app`, not the owner. Schema lives in numbered `.sql` files applied by `npm run db:migrate` |
-| Containers | Docker Compose | Local dev: Nest app, Next app, Postgres, Kafka, Redis (and Zookeeper if using JVM Kafka) |
+| Containers | Docker Compose | Postgres, Redis, Redpanda, Mailpit (dev mail catcher), a one-shot `migrate`, the API and the web app. Both app images use Node 24 |
 
 Package manager: npm. Language: TypeScript. Library versions are not pinned in the plan, so **ask before choosing major versions**.
 
@@ -99,12 +99,16 @@ Rules to follow whenever writing code:
 - Every new tenant-scoped endpoint must be checked for cross-tenant access.
 - **Row-Level Security is enabled** (migration 008), at the developer's request on 2026-10-26. It only protects anything because the app connects as `helpdesk_app`; superusers and owners bypass RLS, so never point the app at the `helpdesk` owner account.
 - **Every new tenant table needs three things in its migration:** an `org_id` column, `ENABLE ROW LEVEL SECURITY` plus a `tenant_isolation` policy, and a `GRANT` to `helpdesk_app` (least privilege; no DELETE unless needed). Without the GRANT the app cannot use it.
-- The one cross-tenant read is the `auth_lookup_user()` function used by login. Do not add more `SECURITY DEFINER` functions without a clear reason.
+- The one cross-tenant read is the `auth_lookup_user()` function used by login. Do not add more `SECURITY DEFINER` functions without a clear reason. (The only other ones are `outbox_claim` and `outbox_complete`: the event relay must read every tenant's outbox rows.)
 
 ### Commands (run from `helpdesk-backend/`)
 - `npm run db:migrate` applies pending migrations to the database in `../.env`. `npm run db:migrate -- --database NAME` targets another database. Never edit a migration that has been applied (its checksum is stored); add a new one.
 - `npm test` runs unit tests (no database). `npm run test:e2e` runs end-to-end tests against the separate `helpdesk_test` database, which it builds and migrates itself. `npm run test:all` runs both.
 - `.env` needs `POSTGRES_*` (owner, used only by migrations and test cleanup), `APP_DB_USER`/`APP_DB_PASSWORD` (what the app uses), `JWT_SECRET`, `JWT_EXPIRES_IN_SECONDS`, `PORT`. See `.env.example`.
+
+### Whole system
+- `docker compose up -d --build` runs everything (web 4311, API 4310, Mailpit inbox 4026). `docker compose up -d postgres redis redpanda mailpit` starts only the services, for running the apps from the editor. Never run both: they share ports 4310 and 4311.
+- `npm run test:e2e` needs Postgres, Redis, Redpanda and Mailpit running. E2E files run one at a time and use `test.*` Kafka topics; keep it that way (the real relay and consumers process any organisation's events).
 
 ### Frontend (`helpdesk-frontend/`, run from that folder)
 - `npm run dev` (or `npm run build` then `npm run start`) serves on port 4311. `npm run lint` checks it. It finds the API through `API_URL` (default `http://localhost:4310`).
@@ -135,6 +139,7 @@ Enforced by role-based guards (RBAC).
 |---|---|---|
 | AuthModule | /api/v1/auth | POST /register-org (atomic tenant + admin creation), POST /login (issues JWT), POST /invite, POST /socket-token (60-second WebSocket-only token, added in Step 7) |
 | TicketsModule | /api/v1/tickets | GET / (paginated tenant queue), GET /:id (added in Step 6 for the detail page), POST / (saves ticket and emits `ticket.created`), PATCH /:id/status |
+| Other modules (added in Steps 7 to 10) | /api/v1/... | `GET /presence` (staff), `GET /team` (staff; admins see customers too), `/canned-responses` CRUD (staff), `GET /notifications` (admin email log), `GET /health` (no login), tickets also have `GET /stats` (staff), `PATCH /:id/assign` (staff) |
 | CommentsModule | /api/v1/tickets/:id/comments | GET / (strips internal notes for customers), POST / (saves and broadcasts over WebSocket) |
 | SupportGateway (`src/realtime/`) | wss://.../support (Socket.io namespace `support`, WebSocket transport only) | Handshake needs a socket token and an allowed Origin. Events in: `ticket:join`, `ticket:leave`, `typing`. Events out: `comment:new`, `ticket:status`, `typing`, `session:expired`. Messages are written through the REST endpoints, which then publish |
 
@@ -230,8 +235,8 @@ The developer is a **beginner** building this to learn and sharpen skills.
 Do not resolve these without the developer's say-so.
 
 1. **Tenant isolation.** ~~Is a NestJS guard plus repository auto-filter enough for Phase 1, or should PostgreSQL Row-Level Security be enabled immediately?~~ Decided by the developer on 2026-10-26: guard and query scoping **and** RLS are all on (see section 6). The reviewer can still challenge this.
-2. **SLA timer.** Planned Redis sorted-set polling worker, or BullMQ delayed jobs backed by Redis?
-3. **Local broker.** Use Redpanda (single-binary, Kafka-compatible) in `docker-compose.yml` instead of JVM Kafka + Zookeeper, to reduce local RAM use?
+2. ~~**SLA timer.** Planned Redis sorted-set polling worker, or BullMQ delayed jobs backed by Redis?~~ Decided by Claude, Oct 2026 (developer said to build the best app): the plan's Redis sorted set with a 10 s poller (`src/sla/`), with the database as the authority on what is overdue. The reviewer can still challenge it.
+3. ~~**Local broker.** Use Redpanda (single-binary, Kafka-compatible) in `docker-compose.yml` instead of JVM Kafka + Zookeeper, to reduce local RAM use?~~ Decided by Claude, Oct 2026: Redpanda. The reviewer can still challenge it.
 
 ---
 

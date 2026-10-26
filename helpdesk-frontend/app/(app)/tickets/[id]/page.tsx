@@ -6,7 +6,7 @@ import { LiveTicket } from '@/components/live-ticket';
 import { ApiError, api } from '@/lib/api';
 import { getCurrentUser } from '@/lib/auth';
 import { isStaff } from '@/lib/constants';
-import type { Ticket, TicketComment } from '@/lib/types';
+import type { CannedResponse, TeamMember, Ticket, TicketComment } from '@/lib/types';
 
 export default function TicketPage({ params }: { params: Promise<{ id: string }> }) {
   return (
@@ -22,6 +22,10 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
 
   let ticket: Ticket;
   let comments: TicketComment[];
+  // Staff also need the people a ticket can be assigned to and the canned replies (customers get neither).
+  const [team, canned] = staff
+    ? await Promise.all([api<TeamMember[]>('/api/v1/team'), api<CannedResponse[]>('/api/v1/canned-responses')])
+    : [[], []];
   try {
     // The API answers 404 for a ticket in another organisation (or another customer's ticket),
     // exactly as it does for one that does not exist, so this page cannot be used to probe ids.
@@ -43,11 +47,16 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
       <h1 className="text-xl font-semibold [overflow-wrap:anywhere]">{ticket.subject}</h1>
 
       {/* Server-rendered with today's data; the socket keeps it current from here on. */}
-      <LiveTicket ticket={ticket} comments={comments} viewer={{ userId: user.userId, role: user.role }} />
+      <LiveTicket
+        ticket={ticket}
+        comments={comments}
+        viewer={{ userId: user.userId, role: user.role }}
+        team={team.filter((member) => member.role !== 'CUSTOMER')}
+      />
 
       <section className="space-y-3">
         <h2 className="font-medium">Reply</h2>
-        <CommentForm ticketId={ticket.id} canWriteInternalNote={staff} />
+        <CommentForm ticketId={ticket.id} canWriteInternalNote={staff} canned={canned} />
       </section>
     </div>
   );

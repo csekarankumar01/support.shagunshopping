@@ -1,3 +1,6 @@
+# The whole system:   docker compose up -d --build      then open http://localhost:4311
+# Only the services:  docker compose up -d postgres redis redpanda mailpit   (and run the apps from your editor)
+# Do not run both at once: the containers and the apps on your machine use the same ports (4310, 4311).
 services:
   postgres:
     image: postgres:17
@@ -11,6 +14,11 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - helpdesk_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   redis:
     image: redis:7
@@ -18,10 +26,17 @@ services:
     restart: unless-stopped
     # AOF persistence: SLA timers must survive a restart. The password comes from .env.
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
       - "${REDIS_PORT}:6379"
     volumes:
       - helpdesk_redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
   # Kafka-compatible broker in one container (decision recorded in CLAUDE.md section 13).
   # Containers reach it at redpanda:9092; programs on this machine at localhost:${KAFKA_PORT}.
@@ -56,6 +71,87 @@ services:
     ports:
       - "${SMTP_PORT}:1025"
       - "${MAIL_UI_PORT}:8025"
+
+  # Applies the numbered .sql migrations as the database owner, then exits. The API starts only after it succeeded.
+  migrate:
+    build: ./helpdesk-backend
+    container_name: helpdesk-migrate
+    command: ["node", "db/migrate.mjs"]
+    restart: "no"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # The API. It gets only what it needs: the restricted database role (never the owner), Redis, Kafka and SMTP.
+  backend:
+    build: ./helpdesk-backend
+    container_name: helpdesk-backend
+    restart: unless-stopped
+    environment:
+      PORT: "4310"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      APP_DB_USER: ${APP_DB_USER}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN_SECONDS: ${JWT_EXPIRES_IN_SECONDS}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      KAFKA_BROKERS: redpanda:9092
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      MAIL_FROM: ${MAIL_FROM:-helpdesk@localhost}
+      FRONTEND_ORIGIN: http://localhost:${FRONTEND_PORT:-4311}
+      TRUST_PROXY: "1" # the Next.js server sits in front and forwards the visitor's address
+    ports:
+      - "${PORT:-4310}:4310"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4310/api/v1/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./helpdesk-frontend
+      args:
+        # Where the visitor's BROWSER opens the WebSocket (baked into the page code at build time).
+        NEXT_PUBLIC_SOCKET_URL: http://localhost:${PORT:-4310}
+    container_name: helpdesk-frontend
+    restart: unless-stopped
+    environment:
+      API_URL: http://backend:4310
+    ports:
+      - "${FRONTEND_PORT:-4311}:4311"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4311/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
 volumes:
   helpdesk_pgdata:

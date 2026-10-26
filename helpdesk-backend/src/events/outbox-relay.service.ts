@@ -69,7 +69,7 @@ export class OutboxRelayService implements OnModuleInit, OnApplicationShutdown {
     rows.sort((a, b) => Number(BigInt(a.id) - BigInt(b.id)));
     await this.kafka.send(
       rows.map((row) => ({
-        topic: row.topic,
+        topic: this.kafka.topicName(row.topic),
         key: row.event_key,
         value: JSON.stringify({
           id: row.id,

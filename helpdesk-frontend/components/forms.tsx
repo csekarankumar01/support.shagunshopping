@@ -1,12 +1,14 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { invite, login, register } from '@/app/actions/auth';
-import { addComment, createTicket, updateStatus } from '@/app/actions/tickets';
+import { createCanned, deleteCanned } from '@/app/actions/canned';
+import { addComment, assignTicket, createTicket, updateStatus } from '@/app/actions/tickets';
 import { TICKET_PRIORITIES, TICKET_STATUSES } from '@/lib/constants';
 import type { TicketStatus } from '@/lib/constants';
 import type { FormState } from '@/lib/form-state';
+import type { CannedResponse, TeamMember } from '@/lib/types';
 import { emitTyping, stopTyping } from '@/lib/socket';
 import { useHydrated } from '@/lib/use-hydrated';
 
@@ -151,14 +153,46 @@ export function StatusForm({ ticketId, current }: { ticketId: string; current: T
   );
 }
 
-export function CommentForm({ ticketId, canWriteInternalNote }: { ticketId: string; canWriteInternalNote: boolean }) {
+export function CommentForm({
+  ticketId,
+  canWriteInternalNote,
+  canned = [],
+}: {
+  ticketId: string;
+  canWriteInternalNote: boolean;
+  canned?: CannedResponse[];
+}) {
+  const messageRef = useRef<HTMLTextAreaElement>(null);
   const [state, action, pending] = useActionState(async (previous: FormState, data: FormData) => {
     stopTyping(ticketId); // sending ends "is typing"
     return addComment(ticketId, previous, data);
   }, {});
   return (
     <form action={action} className="space-y-3">
+      {canned.length > 0 && (
+        <select
+          aria-label="Insert a canned response"
+          defaultValue=""
+          className={`${inputClass} w-auto`}
+          onChange={(event) => {
+            const chosen = canned.find((c) => c.id === event.target.value);
+            if (chosen && messageRef.current) {
+              messageRef.current.value = chosen.body;
+              messageRef.current.focus();
+            }
+            event.target.value = ''; // back to the prompt, ready for the next one
+          }}
+        >
+          <option value="">Insert a canned response…</option>
+          {canned.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.title}
+            </option>
+          ))}
+        </select>
+      )}
       <textarea
+        ref={messageRef}
         name="message"
         required
         maxLength={5000}
@@ -204,6 +238,60 @@ export function InviteForm() {
       </Field>
       <Feedback state={state} />
       <SubmitButton pending={pending} idle="Invite user" busy="Inviting…" />
+    </form>
+  );
+}
+
+export function AssignForm({ ticketId, current, staff, myId }: { ticketId: string; current: string | null; staff: TeamMember[]; myId: string }) {
+  const [state, action, pending] = useActionState(assignTicket.bind(null, ticketId), {});
+  return (
+    <form action={action} className="flex flex-wrap items-center gap-2">
+      {/* keyed on the real assignee, like the status select, so it survives React's form reset and live changes */}
+      <select key={current ?? 'none'} name="agentId" defaultValue={current ?? ''} aria-label="Assignee" className={`${inputClass} w-auto`}>
+        <option value="">Unassigned</option>
+        {staff.map((member) => (
+          <option key={member.userId} value={member.userId}>
+            {member.email}
+            {member.userId === myId ? ' (me)' : ''}
+          </option>
+        ))}
+      </select>
+      <SubmitButton pending={pending} idle="Assign" busy="Saving…" />
+      <Feedback state={state} />
+    </form>
+  );
+}
+
+export function CannedForm() {
+  const [state, action, pending] = useActionState(createCanned, {});
+  return (
+    <form action={action} className="space-y-4">
+      <Field label="Title">
+        <input name="title" required maxLength={100} defaultValue={state.fields?.title} className={inputClass} />
+      </Field>
+      <Field label="Text">
+        <textarea name="body" required maxLength={5000} rows={4} defaultValue={state.fields?.body} className={inputClass} />
+      </Field>
+      <Feedback state={state} />
+      <SubmitButton pending={pending} idle="Save canned response" busy="Saving…" />
+    </form>
+  );
+}
+
+export function DeleteCannedForm({ id, title }: { id: string; title: string }) {
+  const [state, action, pending] = useActionState(deleteCanned.bind(null, id), {});
+  const hydrated = useHydrated();
+  return (
+    <form action={action}>
+      <button
+        type="submit"
+        disabled={pending || !hydrated}
+        aria-label={`Delete ${title}`}
+        className="text-sm text-red-600 hover:underline disabled:opacity-60"
+      >
+        {pending ? 'Deleting…' : 'Delete'}
+      </button>
+      <Feedback state={state} />
     </form>
   );
 }
