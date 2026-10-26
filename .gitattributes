@@ -1,0 +1,2 @@
+# Keep line endings identical on every machine (migration checksums and diffs depend on it).
+* text=auto eol=lf
