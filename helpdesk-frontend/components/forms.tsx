@@ -142,7 +142,7 @@ export function StatusForm({ ticketId, current }: { ticketId: string; current: T
     <form action={action} className="flex flex-wrap items-center gap-2">
       {/* key: a new status (ours or a colleague's, pushed live) mounts a fresh select showing it. Mounting is what
           makes it survive React's reset of the form after an action; an updated select would snap back to OPEN. */}
-      <select key={current} name="status" defaultValue={current} aria-label="Status" className={`${inputClass} w-auto`}>
+      <select key={current} name="status" defaultValue={current} aria-label="Status" className={`${inputClass} w-auto!`}>
         {TICKET_STATUSES.map((s) => (
           <option key={s} value={s}>
             {s.replace('_', ' ')}
@@ -175,7 +175,7 @@ export function CommentForm({
         <select
           aria-label="Insert a canned response"
           defaultValue=""
-          className={`${inputClass} w-auto`}
+          className={`${inputClass} w-auto!`}
           onChange={(event) => {
             const chosen = canned.find((c) => c.id === event.target.value);
             if (chosen && messageRef.current) {
@@ -250,7 +250,7 @@ export function AssignForm({ ticketId, current, staff, myId }: { ticketId: strin
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       {/* keyed on the real assignee, like the status select, so it survives React's form reset and live changes */}
-      <select key={current ?? 'none'} name="agentId" defaultValue={current ?? ''} aria-label="Assignee" className={`${inputClass} w-auto`}>
+      <select key={current ?? 'none'} name="agentId" defaultValue={current ?? ''} aria-label="Assignee" className={`${inputClass} w-auto!`}>
         <option value="">Unassigned</option>
         {staff.map((member) => (
           <option key={member.userId} value={member.userId}>
@@ -378,7 +378,7 @@ export function MemberControls({ member }: { member: TeamMember }) {
         defaultValue={member.role}
         disabled={pending || !hydrated}
         onChange={(event) => save({ role: event.target.value })}
-        className={`${inputClass} w-auto py-1`}
+        className={`${inputClass} w-auto! py-1`}
       >
         <option value="AGENT">AGENT</option>
         <option value="CUSTOMER">CUSTOMER</option>

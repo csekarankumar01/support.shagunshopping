@@ -157,7 +157,7 @@ export function LiveTicket({
 
   return (
     <>
-      <div className="space-y-3">
+      <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
         <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
           <StatusBadge status={status} />
           <PriorityBadge priority={priority} />
@@ -206,10 +206,21 @@ export function LiveTicket({
             {conversation.map((comment) => (
               <li
                 key={comment.id}
+                className={`flex gap-3 ${comment.authorId === viewer.userId ? 'flex-row-reverse' : ''}`}
+              >
+                <span
+                  aria-hidden
+                  className={`mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold text-white ${
+                    comment.authorRole === 'CUSTOMER' ? 'bg-sky-500' : 'bg-gradient-to-br from-indigo-600 to-violet-600'
+                  }`}
+                >
+                  {(comment.authorEmail ?? comment.authorRole).charAt(0).toUpperCase()}
+                </span>
+                <div
                 className={
                   comment.isInternalNote
-                    ? 'rounded-2xl border border-dashed border-amber-400 bg-amber-50 px-4 py-3 [overflow-wrap:anywhere] dark:border-amber-800 dark:bg-amber-950'
-                    : 'rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-sm [overflow-wrap:anywhere] dark:border-white/10 dark:bg-white/5'
+                    ? 'max-w-[85%] min-w-0 rounded-2xl border border-dashed border-amber-400 bg-amber-50 px-4 py-3 [overflow-wrap:anywhere] dark:border-amber-800 dark:bg-amber-950'
+                    : 'max-w-[85%] min-w-0 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-sm [overflow-wrap:anywhere] dark:border-white/10 dark:bg-white/5'
                 }
               >
                 <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
@@ -222,6 +233,7 @@ export function LiveTicket({
                   )}
                 </div>
                 <p className="text-sm whitespace-pre-wrap">{comment.message}</p>
+                </div>
               </li>
             ))}
           </ul>

@@ -44,7 +44,7 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
         ← Back to {staff ? 'queue' : 'my tickets'}
       </Link>
 
-      <h1 className="text-xl font-semibold [overflow-wrap:anywhere]">{ticket.subject}</h1>
+      <h1 className="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]">{ticket.subject}</h1>
 
       {/* Server-rendered with today's data; the socket keeps it current from here on. */}
       <LiveTicket
@@ -54,7 +54,7 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
         team={team.filter((member) => member.role !== 'CUSTOMER')}
       />
 
-      <section className="space-y-3">
+      <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
         <h2 className="font-medium">Reply</h2>
         <CommentForm ticketId={ticket.id} canWriteInternalNote={staff} canned={canned} />
       </section>

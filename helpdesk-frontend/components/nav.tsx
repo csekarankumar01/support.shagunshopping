@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { NavLink } from '@/components/nav-link';
 import { logout } from '@/app/actions/auth';
 import { StaffLive } from '@/components/staff-live';
 import { getCurrentUser } from '@/lib/auth';
@@ -17,36 +17,36 @@ export async function Nav() {
           Helpdesk
         </span>
         {staff && (
-          <Link href="/dashboard" className={linkClass}>
+          <NavLink href="/dashboard">
             Dashboard
-          </Link>
+          </NavLink>
         )}
-        <Link href="/tickets" className={linkClass}>
+        <NavLink href="/tickets">
           {staff ? 'Queue' : 'My tickets'}
-        </Link>
+        </NavLink>
         {user.role === 'CUSTOMER' && (
-          <Link href="/tickets/new" className={linkClass}>
+          <NavLink href="/tickets/new">
             New ticket
-          </Link>
+          </NavLink>
         )}
         {staff && (
-          <Link href="/canned" className={linkClass}>
+          <NavLink href="/canned">
             Canned responses
-          </Link>
+          </NavLink>
         )}
         {user.role === 'ADMIN' && (
           <>
-            <Link href="/team" className={linkClass}>
+            <NavLink href="/team">
               Team
-            </Link>
-            <Link href="/notifications" className={linkClass}>
+            </NavLink>
+            <NavLink href="/notifications">
               Emails
-            </Link>
+            </NavLink>
           </>
         )}
-        <Link href="/account" className={linkClass}>
+        <NavLink href="/account">
           Account
-        </Link>
+        </NavLink>
         <span className="ml-auto rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">{user.role}</span>
         <form action={logout}>
           <button type="submit" className={linkClass}>
