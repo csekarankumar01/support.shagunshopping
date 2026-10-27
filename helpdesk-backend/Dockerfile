@@ -25,4 +25,4 @@ COPY package.json ./
 COPY db ./db
 USER node
 EXPOSE 4310
-CMD ["node", "dist/main.js"]
+CMD ["node", "db/start.mjs"]

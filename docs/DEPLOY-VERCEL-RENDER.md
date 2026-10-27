@@ -24,7 +24,7 @@ super admin all work; automatic ticket receipts and SLA breach alerts need Kafka
 | Dockerfile path | `./Dockerfile` |
 | Instance type | a paid always-on instance (a sleeping instance stops the SLA checker and chat) |
 | Health check path | `/api/v1/health` |
-| Pre-deploy command | `node db/migrate.mjs` |
+| Pre-deploy command | optional if `RUN_MIGRATIONS=true`; otherwise `node db/migrate.mjs` |
 
 Do **not** set `PORT`: Render provides it and the API reads it.
 
@@ -33,6 +33,7 @@ Do **not** set `PORT`: Render provides it and the API reads it.
 | Variable | Value | Notes |
 |---|---|---|
 | `DATABASE_URL` | the Render database's **Internal Database URL** | one value, copied whole (`postgresql://user:password@host/db`). It names the server and database and is used by the pre-deploy migration as the owner; the API itself then connects as `helpdesk_app` using `APP_DB_PASSWORD`. If it is missing, the deploy fails with "Cannot tell which database to use" |
+| `RUN_MIGRATIONS` | `true` | the API brings the database up to date every time it starts, then runs. Needed when your Render plan has no pre-deploy command (without migrations the restricted role does not exist and the API stops with "password authentication failed for user helpdesk_app"). The trade-off: the owner's `DATABASE_URL` is then in the API's environment (the API never uses it to sign in) |
 | `POSTGRES_SSL` | `true` | if the log says the server does not support SSL, set `false` |
 | `APP_DB_USER` | `helpdesk_app` | the restricted role the API runs as |
 | `APP_DB_PASSWORD` | a NEW long random password | `openssl rand -hex 24`; the migration sets the role's password to this |
