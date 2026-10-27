@@ -28,7 +28,7 @@ export default function globalTeardown() {
       }
       for (const id of orgIds) redis('DEL', `presence:${id}`);
       // session_replication_role = replica switches off foreign-key checks, so children are deleted explicitly, in order.
-      const tables = ['password_resets', 'refresh_tokens', 'notifications', 'outbox_events', 'canned_responses', 'audit_logs', 'comments', 'tickets', 'users'];
+      const tables = ['password_resets', 'refresh_tokens', 'notifications', 'outbox_events', 'canned_responses', 'dead_letters', 'audit_logs', 'comments', 'tickets', 'users'];
       psql(`begin; set local session_replication_role = replica; ${tables.map((t) => `delete from ${t} where org_id in (${inIds});`).join(' ')} delete from organizations where id in (${inIds}); commit;`);
     }
     rmSync(listFile);
