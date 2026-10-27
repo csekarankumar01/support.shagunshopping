@@ -10,6 +10,7 @@ import { EventsModule } from './events/events.module.js';
 import { HealthModule } from './health/health.controller.js';
 import { MetricsModule } from './metrics/metrics.module.js';
 import { NotificationsModule } from './notifications/notifications.controller.js';
+import { PlatformModule } from './platform/platform.controller.js';
 import { PresenceModule } from './presence/presence.module.js';
 import { RealtimeModule } from './realtime/realtime.module.js';
 import { RedisModule } from './redis/redis.module.js';
@@ -30,6 +31,7 @@ import { TicketsModule } from './tickets/tickets.module.js';
     TeamModule,
     CannedModule,
     NotificationsModule,
+    PlatformModule,
     HealthModule,
     MetricsModule,
   ],

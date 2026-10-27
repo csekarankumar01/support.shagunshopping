@@ -253,6 +253,21 @@ agents and customers from the **Team** page. Look at the emails the system sends
 Ports 1338, 1339, 3000, 3001, 8000 and 8080 are used by other projects on the development machine and are avoided.
 Stop the containers before running the apps from your editor (they share ports 4310 and 4311).
 
+## Super admin (platform console)
+
+The operator of the service has a separate **platform console** at `/platform`, above all organisations: see every
+organisation, user and ticket (internal notes included, read-only), edit an organisation's name, plan and SLA, suspend or
+reactivate it, and change a user's role or switch them off. Everything it changes, and every ticket it opens, is written
+to an append-only audit log. Its login and token are separate from organisation logins (neither works in place of the
+other), and a super admin can only be created from the server:
+
+```bash
+cd helpdesk-backend
+npm run platform:create-admin -- you@example.com      # prints a generated password once
+```
+
+Database guide with diagram, readable `v_*` views and editing tips: [`docs/DATABASE.md`](docs/DATABASE.md).
+
 ## Develop with the apps on your machine
 
 ```bash

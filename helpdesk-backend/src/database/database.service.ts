@@ -105,6 +105,19 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * Transaction for the platform (super) admin console. Sets `app.platform_admin = 'on'` for this transaction only,
+   * which the platform_* Row-Level Security policies (migration 016) check. Only PlatformService calls this, after
+   * PlatformAuthGuard has verified a platform token; tenant requests never do. Statements here are NOT scoped to one
+   * organisation, so every query must name the rows it wants.
+   */
+  platformTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+    return this.transaction(async (client) => {
+      await client.query("SELECT set_config('app.platform_admin', 'on', true)");
+      return work(client);
+    });
+  }
+
   /** Same as tenantContextTransaction(), but every statement is tenant-scoped like tenantQuery(). */
   tenantTransaction<T>(
     orgId: string,

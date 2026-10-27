@@ -2,6 +2,8 @@
 // The lists mirror helpdesk-backend/src/tickets/ticket.constants.ts and src/auth/role.ts.
 export const TOKEN_COOKIE = 'helpdesk_token';
 export const REFRESH_COOKIE = 'helpdesk_refresh';
+/** The super admin's own login cookie: never the same one as a tenant login, and the API refuses each in the other's place. */
+export const PLATFORM_COOKIE = 'helpdesk_platform';
 
 export const TICKET_STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const;
 export type TicketStatus = (typeof TICKET_STATUSES)[number];

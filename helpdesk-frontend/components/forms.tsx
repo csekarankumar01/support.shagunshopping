@@ -18,9 +18,9 @@ import { useHydrated } from '@/lib/use-hydrated';
 // action's returned FormState, and reports `pending` while it runs. Submit buttons stay disabled until the
 // page's JavaScript has loaded (see SubmitButton).
 
-const inputClass =
+export const inputClass =
   'w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
-const buttonClass =
+export const buttonClass =
   'rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg active:translate-y-px disabled:opacity-60';
 
 /**
@@ -29,7 +29,7 @@ const buttonClass =
  * shell, so the visitor would see a blank page. Waiting a moment avoids that (a disabled default button also
  * stops Enter from submitting).
  */
-function SubmitButton({ pending, idle, busy }: { pending: boolean; idle: string; busy: string }) {
+export function SubmitButton({ pending, idle, busy }: { pending: boolean; idle: string; busy: string }) {
   const hydrated = useHydrated();
   return (
     <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
@@ -38,7 +38,7 @@ function SubmitButton({ pending, idle, busy }: { pending: boolean; idle: string;
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+export function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block space-y-1">
       <span className="text-sm font-medium">{label}</span>
@@ -47,7 +47,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Feedback({ state }: { state: FormState }) {
+export function Feedback({ state }: { state: FormState }) {
   if (state.error)
     return (
       <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">

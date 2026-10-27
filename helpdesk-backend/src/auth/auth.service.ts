@@ -114,9 +114,10 @@ export class AuthService implements OnModuleInit {
       role: Role;
       password_hash: string;
       is_active: boolean;
+      org_suspended: boolean;
     }>(
       // Login runs before any tenant is known, so it uses the one narrow SECURITY DEFINER lookup (migration 011).
-      'SELECT id, org_id, role, password_hash, is_active FROM auth_lookup_user($1, $2)',
+      'SELECT id, org_id, role, password_hash, is_active, org_suspended FROM auth_lookup_user($1, $2)',
       [orgSlug, email],
     );
     const user = rows[0];
@@ -128,6 +129,12 @@ export class AuthService implements OnModuleInit {
     );
     if (!user || !passwordOk || !user.is_active) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+    // Only said after the password was right, so it does not reveal which organisations exist.
+    if (user.org_suspended) {
+      throw new ForbiddenException(
+        'This organisation has been suspended. Please contact support.',
+      );
     }
     return this.db.tenantTransaction(user.org_id, (q) =>
       this.sessions.start(q, {

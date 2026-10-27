@@ -122,6 +122,7 @@ export async function deleteTenants(owner: pg.Pool, slugs: string[]) {
       'notifications',
       'outbox_events',
       'canned_responses',
+      'dead_letters',
       'audit_logs',
       'comments',
       'tickets',

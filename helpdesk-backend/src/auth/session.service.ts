@@ -128,7 +128,10 @@ export class SessionService {
       }
 
       const users = await q<{ id: string; role: Role; isActive: boolean }>(
-        `SELECT id, role, is_active AS "isActive" FROM users WHERE org_id = $1 AND id = $2`,
+        // A suspended organisation counts as inactive: its sessions end at the next refresh.
+        `SELECT u.id, u.role, (u.is_active AND o.suspended_at IS NULL) AS "isActive"
+           FROM users u JOIN organizations o ON o.id = u.org_id
+          WHERE u.org_id = $1 AND u.id = $2`,
         [token.userId],
       );
       const user = users.rows[0];
