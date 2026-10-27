@@ -1,5 +1,6 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { ApiError, api, apiPublic, apiRequest } from '@/lib/api';
 import type { SessionTokens } from '@/lib/cookies';
@@ -86,12 +87,23 @@ export async function invite(_prev: FormState, data: FormData): Promise<FormStat
   const role = text(data, 'role');
   const password = String(data.get('password') ?? ''); // optional: blank means "email them a link to choose one"
   try {
-    await api('/api/v1/auth/invite', { method: 'POST', body: { email, role, ...(password && { password }) } });
+    const res = await api<{ invitationSent?: boolean; inviteLink?: string; emailWarning?: string }>(
+      '/api/v1/auth/invite',
+      { method: 'POST', body: { email, role, ...(password && { password }) } },
+    );
+    revalidatePath('/team');
+    if (res?.emailWarning) {
+      return {
+        ok: `Invited ${email} as ${role}. Note: Resend delivery restriction (${res.emailWarning}). You can copy and send them this direct password setup link: ${res.inviteLink}`,
+      };
+    }
+    return {
+      ok: password
+        ? `Invited ${email} as ${role}.`
+        : `Invited ${email} as ${role}. An invitation email with a link to choose a password was sent via Resend.`,
+    };
   } catch (err) {
     if (err instanceof ApiError) return { error: err.message, fields: { email, role } };
     throw err;
   }
-  return {
-    ok: password ? `Invited ${email} as ${role}.` : `Invited ${email} as ${role}. They have been emailed a link to choose a password.`,
-  };
 }

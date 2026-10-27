@@ -54,15 +54,15 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 export function Feedback({ state }: { state: FormState }) {
   if (state.error)
     return (
-      <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+      <p role="alert" className="break-words rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
         {state.error}
       </p>
     );
   if (state.ok)
     return (
-      <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:text-green-400 dark:bg-green-950 dark:text-green-300">
-        {state.ok}
-      </p>
+      <div role="status" className="break-words rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-800 dark:bg-green-950/60 dark:text-green-300">
+        <p>{state.ok}</p>
+      </div>
     );
   return null;
 }
@@ -170,7 +170,7 @@ export function NewTicketForm() {
         <input name="subject" required maxLength={200} defaultValue={state.fields?.subject} className={inputClass} />
       </Field>
       <Field label="Priority">
-        <select name="priority" defaultValue={state.fields?.priority ?? 'MEDIUM'} className={selectClass}>
+        <select name="priority" defaultValue={state.fields?.priority ?? 'MEDIUM'} className={`${selectClass} max-w-[220px]`}>
           {priorityOptions}
         </select>
       </Field>
@@ -283,7 +283,7 @@ export function InviteForm() {
         />
       </Field>
       <Field label="Role">
-        <select name="role" defaultValue={state.fields?.role ?? 'AGENT'} className={selectClass}>
+        <select name="role" defaultValue={state.fields?.role ?? 'AGENT'} className={`${selectClass} max-w-[220px]`}>
           <option value="AGENT">Support Agent</option>
           <option value="CUSTOMER">Customer</option>
         </select>

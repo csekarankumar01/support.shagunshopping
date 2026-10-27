@@ -49,7 +49,7 @@ export function OrganizationForm({ org }: { org: PlatformOrg }) {
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Plan">
-          <select name="plan" defaultValue={org.plan} className={selectClass}>
+          <select name="plan" defaultValue={org.plan} className={`${selectClass} max-w-[160px]`}>
             <option value="FREE">FREE</option>
             <option value="PRO">PRO</option>
             <option value="ENT">ENT</option>

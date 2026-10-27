@@ -369,18 +369,31 @@ export class AuthService implements OnModuleInit {
         user.id,
         INVITE_LINK_HOURS,
       );
-      await this.mailer.send(
-        email,
-        'You have been invited to the help desk',
-        `You have been added as ${role === 'AGENT' ? 'an agent' : 'a customer'}.\n\n` +
-          `Choose your password here (the link works once and expires in ${INVITE_LINK_HOURS / 24} days):\n\n${link}\n\n` +
-          `If you were not expecting this, you can safely ignore this email.\n`,
-      );
-      return { ...user, invitationSent: true };
+      let emailError: string | null = null;
+      try {
+        await this.mailer.send(
+          email,
+          'You have been invited to the help desk',
+          `You have been added as ${role === 'AGENT' ? 'an agent' : 'a customer'}.\n\n` +
+            `Choose your password here (the link works once and expires in ${INVITE_LINK_HOURS / 24} days):\n\n${link}\n\n` +
+            `If you were not expecting this, you can safely ignore this email.\n`,
+        );
+      } catch (mailErr: any) {
+        this.logger.warn(
+          `Could not deliver invitation email to ${email}: ${mailErr.message}`,
+        );
+        emailError = mailErr.message;
+      }
+      return {
+        ...user,
+        invitationSent: !emailError,
+        inviteLink: link,
+        emailWarning: emailError,
+      };
     } catch (err) {
       if (isUniqueViolation(err, 'users_org_email_key')) {
         if (!password) {
-          // Re-send invite link to existing user
+          // Re-send invite link to existing user & update role if requested
           const { rows } = await this.db.tenantQuery<{
             id: string;
             email: string;
@@ -392,19 +405,40 @@ export class AuthService implements OnModuleInit {
           );
           const existing = rows[0];
           if (existing) {
+            if (role && existing.role !== role) {
+              await this.db.tenantQuery(
+                orgId,
+                'UPDATE users SET role = $2 WHERE org_id = $1 AND id = $3',
+                [orgId, role, existing.id],
+              );
+              existing.role = role;
+            }
             const link = await this.createResetLink(
               orgId,
               existing.id,
               INVITE_LINK_HOURS,
             );
-            await this.mailer.send(
-              email,
-              'You have been invited to the help desk',
-              `You have been added as ${existing.role === 'AGENT' ? 'an agent' : 'a customer'}.\n\n` +
-                `Choose your password here (the link works once and expires in ${INVITE_LINK_HOURS / 24} days):\n\n${link}\n\n` +
-                `If you were not expecting this, you can safely ignore this email.\n`,
-            );
-            return { ...existing, invitationSent: true };
+            let emailError: string | null = null;
+            try {
+              await this.mailer.send(
+                email,
+                'You have been invited to the help desk',
+                `You have been added as ${existing.role === 'AGENT' ? 'an agent' : 'a customer'}.\n\n` +
+                  `Choose your password here (the link works once and expires in ${INVITE_LINK_HOURS / 24} days):\n\n${link}\n\n` +
+                  `If you were not expecting this, you can safely ignore this email.\n`,
+              );
+            } catch (mailErr: any) {
+              this.logger.warn(
+                `Could not deliver invitation email to ${email}: ${mailErr.message}`,
+              );
+              emailError = mailErr.message;
+            }
+            return {
+              ...existing,
+              invitationSent: !emailError,
+              inviteLink: link,
+              emailWarning: emailError,
+            };
           }
         }
         throw new ConflictException(
