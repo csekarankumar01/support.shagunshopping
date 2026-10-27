@@ -254,3 +254,14 @@ Against the plan's targets: ticket creation under 30 ms is met with one client (
 - **CI:** `.github/workflows/ci.yml`, `dependabot.yml`, helper scripts in `scripts/`.
 - **Deployment:** `deploy/docker-compose.prod.yml`, `Caddyfile`, `backup.sh`, `docs/DEPLOYMENT.md`. Not deployed anywhere; nothing here is tested against a real cloud host.
 - Backend e2e (`npm run test:e2e`) was not re-run in this session.
+
+## UI redesign, README and security review (done 2026-10-27)
+
+- **UI:** Inter font, gradient split-screen sign-in, sticky glass nav with active-link highlight, card dashboard and ticket page, dotted status/priority badges, chat avatars (own messages on the right). Shared styles live in `components/forms.tsx`, `badges.tsx`, `nav.tsx`, `nav-link.tsx`, `auth-card.tsx`, `app/globals.css`.
+- **README.md** rewritten in depth (purpose, features, design decisions, security, tests, measured latency, resume summary). Pushed to `karaninfomerics/Real-Time-Multi-Tenant-Helpdesk-SaaS`.
+- **Security review:** `npm audit` 0 findings in backend, frontend and e2e. One real bug fixed: emails were case-sensitive (login with the lowercase address failed; one person could hold two accounts). Emails and org slugs are now trimmed and lowercased (`src/auth/dto/email.ts`, migration `013_lowercase_emails.sql`); login password capped at 200 characters; HSTS header added to the web app.
+- **Proof:** 38 unit, 132 backend e2e, 52 Playwright tests all passing after the changes.
+- **Not done:** email verification at registration (any address is accepted unverified); revocation fails open if Redis is down (documented tradeoff); three type errors in backend test files (no effect on build or tests); the repo is not pushed to the `csekarankumar01` GitHub account (login on this laptop is `karaninfomerics`); no live deployment yet (a Cloudflare tunnel is blocked by the company firewall; plan is Render/Railway + Vercel).
+- Note: the earlier "Known limits" list is partly outdated: refresh tokens, revocation, password reset and the Redis Socket.io adapter now exist.
+
+**Next:** email verification, then cloud deployment (needs Render or Railway and Vercel accounts).
