@@ -164,7 +164,11 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
         );
     });
     try {
-      if (await connected) announce(true);
+      // Announced for EVERY new socket, not only a user's first: after a page reload the new socket can connect before
+      // the old one's disconnect is processed, which would otherwise look like "already online" and leave the page
+      // showing a stale list. Listeners just re-read who is online, so repeating it is harmless.
+      await connected;
+      announce(true);
     } catch (err) {
       this.logger.warn(`presence connect failed: ${(err as Error).message}`);
     }

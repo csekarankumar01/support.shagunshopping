@@ -2,6 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   Logger,
   OnModuleInit,
@@ -42,6 +43,7 @@ const isUniqueViolation = (err: unknown, constraint: string) =>
 export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
   private readonly frontendUrl: string;
+  private readonly registrationOpen: boolean;
   /** A real bcrypt hash of nothing in particular, compared against when the account does not exist (see login). */
   private decoyHash = '';
 
@@ -52,6 +54,8 @@ export class AuthService implements OnModuleInit {
     private readonly mailer: MailerService,
     config: ConfigService,
   ) {
+    // A private deployment sets ALLOW_REGISTRATION=false so that nobody else can create organisations on it.
+    this.registrationOpen = config.get<string>('ALLOW_REGISTRATION', 'true') !== 'false';
     this.frontendUrl = config
       .get<string>('FRONTEND_ORIGIN', 'http://localhost:4311')
       .split(',')[0]
@@ -67,6 +71,9 @@ export class AuthService implements OnModuleInit {
 
   /** Creates the tenant and its first ADMIN atomically: both rows are saved or neither is. */
   async registerOrg({ orgName, orgSlug, email, password }: RegisterOrgDto) {
+    if (!this.registrationOpen) {
+      throw new ForbiddenException('Registration is closed on this server');
+    }
     const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
     // Row-Level Security only lets us write rows of the "current" org, so the new org's id is generated
     // here and set as the tenant context before inserting.
@@ -185,7 +192,8 @@ export class AuthService implements OnModuleInit {
       !rows[0] ||
       !(await bcrypt.compare(dto.currentPassword, rows[0].passwordHash))
     ) {
-      throw new UnauthorizedException('Current password is wrong');
+      // 400, not 401: the person IS logged in. A 401 here would be read by the web app as "your session ended".
+      throw new BadRequestException('Current password is wrong');
     }
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_COST);
     const sids = await this.db.tenantTransaction(user.orgId, async (q) => {

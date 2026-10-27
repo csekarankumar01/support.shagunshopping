@@ -184,7 +184,7 @@ describe('several API instances, SLA timer recovery, metrics and security header
         'admin@shared.com',
         'agent@x.com',
       ]); // same answer from either instance
-      expect(agentEvents().filter((a) => a.online)).toHaveLength(1); // two sockets, one "came online"
+      expect(agentEvents().filter((a) => a.online).length).toBeGreaterThanOrEqual(1); // announced when they arrive (once per socket)
 
       onOne.close();
       await settle(800);
@@ -285,6 +285,32 @@ describe('several API instances, SLA timer recovery, metrics and security header
       await sla.reconcile();
       expect(Number(await score(open1.id))).toBe(12345); // NX: an existing timer is never overwritten
       expect(await sla.reconcile()).toBe(0); // and a second pass has nothing to do
+    });
+  });
+
+  describe('private deployments', () => {
+    it('refuses new organisations when ALLOW_REGISTRATION=false, while everything else keeps working', async () => {
+      process.env.ALLOW_REGISTRATION = 'false';
+      const closed = await createTestApp();
+      try {
+        const res = await via(closed)
+          .post(`${API}/auth/register-org`)
+          .send({
+            orgName: 'Nope',
+            orgSlug: `closed-${Date.now().toString(36)}`,
+            email: 'a@b.test',
+            password: 'Welcome123',
+          });
+        expect(res.status).toBe(403);
+        expect(res.body.message).toBe('Registration is closed on this server');
+        const login = await via(closed)
+          .post(`${API}/auth/login`)
+          .send({ orgSlug: t.slug, email: 'cust1@x.com', password: 'Welcome123' });
+        expect(login.status).toBe(200);
+      } finally {
+        delete process.env.ALLOW_REGISTRATION;
+        await closed.close();
+      }
     });
   });
 

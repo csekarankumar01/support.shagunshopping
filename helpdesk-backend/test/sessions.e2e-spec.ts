@@ -394,7 +394,7 @@ describe('sessions, revocation, password flows and member management', () => {
             newPassword: 'Another123',
           })
         ).status,
-      ).toBe(401);
+      ).toBe(400); // not 401: the user IS logged in, and the web app reads a 401 as "session ended"
       expect(
         (
           await change(here.accessToken, {
