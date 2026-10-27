@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ConfigService } from '@nestjs/config';
 import { MailerService } from './mailer.service.js';
 

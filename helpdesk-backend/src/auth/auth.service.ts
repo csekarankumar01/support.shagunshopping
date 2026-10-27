@@ -6,7 +6,6 @@ import {
   Injectable,
   Logger,
   OnModuleInit,
-  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -85,30 +84,7 @@ export class AuthService implements OnModuleInit {
     if (!this.registrationOpen) {
       throw new ForbiddenException('Registration is closed on this server');
     }
-    if (this.requireVerification) {
-      try {
-        return await this.registration.start(dto);
-      } catch (err: any) {
-        // When email verification sending fails due to mailer restrictions (e.g. Resend free test mode on unverified domain),
-        // fallback to creating the organisation directly so sign-up succeeds smoothly!
-        if (err instanceof ServiceUnavailableException) {
-          this.logger.warn(
-            `Verification email failed (${err.message}); creating organisation "${dto.orgSlug}" directly without verification code.`,
-          );
-          await this.db.query(
-            'DELETE FROM pending_registrations WHERE org_slug = $1',
-            [dto.orgSlug],
-          );
-          return this.createOrganization({
-            orgName: dto.orgName,
-            orgSlug: dto.orgSlug,
-            email: dto.email,
-            passwordHash: await bcrypt.hash(dto.password, BCRYPT_COST),
-          });
-        }
-        throw err;
-      }
-    }
+    if (this.requireVerification) return this.registration.start(dto);
     return this.createOrganization({
       orgName: dto.orgName,
       orgSlug: dto.orgSlug,
@@ -408,12 +384,15 @@ export class AuthService implements OnModuleInit {
         );
         emailError = mailErr.message;
       }
-      return {
-        ...user,
-        invitationSent: !emailError,
-        inviteLink: link,
-        emailWarning: emailError,
-      };
+      if (emailError) {
+        return {
+          ...user,
+          invitationSent: false,
+          inviteLink: link,
+          emailWarning: emailError,
+        };
+      }
+      return { ...user, invitationSent: true };
     } catch (err) {
       if (isUniqueViolation(err, 'users_org_email_key')) {
         if (!password) {
@@ -457,12 +436,15 @@ export class AuthService implements OnModuleInit {
               );
               emailError = mailErr.message;
             }
-            return {
-              ...existing,
-              invitationSent: !emailError,
-              inviteLink: link,
-              emailWarning: emailError,
-            };
+            if (emailError) {
+              return {
+                ...existing,
+                invitationSent: false,
+                inviteLink: link,
+                emailWarning: emailError,
+              };
+            }
+            return { ...existing, invitationSent: true };
           }
         }
         throw new ConflictException(

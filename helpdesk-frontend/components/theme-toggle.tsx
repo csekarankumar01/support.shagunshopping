@@ -1,23 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useHydrated } from '@/lib/use-hydrated';
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const isDark = document.documentElement.classList.contains('dark') ||
-      (!document.documentElement.classList.contains('light') &&
-       window.matchMedia('(prefers-color-scheme: dark)').matches);
-    setTheme(isDark ? 'dark' : 'light');
-  }, []);
+  const hydrated = useHydrated();
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    if (typeof document === 'undefined') return 'dark';
+    return document.documentElement.classList.contains('light') ? 'light' : 'dark';
+  });
 
   const toggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
+    const isCurrentlyDark =
+      document.documentElement.classList.contains('dark') ||
+      (!document.documentElement.classList.contains('light') &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches);
+    const next = isCurrentlyDark ? 'light' : 'dark';
     setTheme(next);
-    localStorage.setItem('theme', next);
+    try {
+      localStorage.setItem('theme', next);
+    } catch {
+      // localStorage may be disabled in private browsing
+    }
 
     if (next === 'dark') {
       document.documentElement.classList.add('dark');
@@ -28,8 +32,7 @@ export function ThemeToggle() {
     }
   };
 
-  // Avoid hydration mismatch by rendering a matching sized placeholder before mount
-  if (!mounted) {
+  if (!hydrated) {
     return (
       <div className="h-8 w-8 rounded-lg border border-slate-300/60 bg-white/50 dark:border-white/10 dark:bg-white/5" />
     );
