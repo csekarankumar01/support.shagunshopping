@@ -157,52 +157,77 @@ export function LiveTicket({
 
   return (
     <>
-      <div className="space-y-3 rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
-        <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-600 dark:text-neutral-400">
+      <div className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5">
+        <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
           <StatusBadge status={status} />
           <PriorityBadge priority={priority} />
           {staff && breached && (
-            <span className="inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white" data-testid="sla-breached">
+            <span
+              className="inline-flex items-center rounded-full bg-red-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-xs shadow-red-600/30"
+              data-testid="sla-breached"
+            >
               SLA breached
             </span>
           )}
-          <span>
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             Opened <LocalTime iso={ticket.createdAt} />
           </span>
           {staff && (
-            <span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               SLA deadline <LocalTime iso={ticket.slaDeadline} />
             </span>
           )}
-          <span className="ml-auto flex items-center gap-1.5 text-xs" data-connection={connection}>
-            <span className={`inline-block h-2 w-2 rounded-full ${connection === 'live' ? 'bg-green-500' : 'bg-amber-500'}`} />
+          <span
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-slate-50/80 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300"
+            data-connection={connection}
+          >
+            <span
+              className={`inline-block h-2 w-2 rounded-full ${
+                connection === 'live' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              }`}
+            />
             {connection === 'live' ? 'Live' : 'Reconnecting…'}
           </span>
         </div>
+
         {staff && (
-          <>
-            <StatusForm ticketId={ticket.id} current={status} />
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-neutral-600 dark:text-neutral-400" data-testid="assignee">
-                Assigned to: {assignee ? assignee.email : 'nobody'}
-              </span>
-              <AssignForm ticketId={ticket.id} current={assigneeId} staff={team} myId={viewer.userId} />
+          <div className="border-t border-slate-100 pt-3.5 dark:border-white/10">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <StatusForm ticketId={ticket.id} current={status} />
+                <div className="h-4 w-px bg-slate-200 dark:bg-white/10" aria-hidden />
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-xs font-medium text-slate-600 dark:text-slate-400" data-testid="assignee">
+                    Assigned to: {assignee ? assignee.email : 'nobody'}
+                  </span>
+                  <AssignForm ticketId={ticket.id} current={assigneeId} staff={team} myId={viewer.userId} />
+                </div>
+              </div>
+
+              {ticket.firstResponseAt && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  First reply <LocalTime iso={ticket.firstResponseAt} />
+                </p>
+              )}
             </div>
-            {ticket.firstResponseAt && (
-              <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                First reply <LocalTime iso={ticket.firstResponseAt} />
-              </p>
-            )}
-          </>
+          </div>
         )}
       </div>
 
-      <section className="space-y-3">
-        <h2 className="font-medium">Conversation</h2>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Conversation</h2>
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+            {conversation.length} {conversation.length === 1 ? 'message' : 'messages'}
+          </span>
+        </div>
+
         {conversation.length === 0 ? (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">No messages yet.</p>
+          <p className="rounded-xl border border-dashed border-slate-300/80 bg-white/40 px-4 py-8 text-center text-sm text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+            No messages yet.
+          </p>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-4">
             {conversation.map((comment) => (
               <li
                 key={comment.id}
@@ -210,35 +235,40 @@ export function LiveTicket({
               >
                 <span
                   aria-hidden
-                  className={`mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-semibold text-white ${
-                    comment.authorRole === 'CUSTOMER' ? 'bg-sky-500' : 'bg-gradient-to-br from-indigo-600 to-violet-600'
+                  className={`mt-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xs font-bold text-white shadow-xs ${
+                    comment.authorRole === 'CUSTOMER'
+                      ? 'bg-sky-500'
+                      : 'bg-gradient-to-br from-indigo-600 to-violet-600'
                   }`}
                 >
                   {(comment.authorEmail ?? comment.authorRole).charAt(0).toUpperCase()}
                 </span>
                 <div
-                className={
-                  comment.isInternalNote
-                    ? 'max-w-[85%] min-w-0 rounded-2xl border border-dashed border-amber-400 bg-amber-50 px-4 py-3 [overflow-wrap:anywhere] dark:border-amber-800 dark:bg-amber-950'
-                    : 'max-w-[85%] min-w-0 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-sm [overflow-wrap:anywhere] dark:border-white/10 dark:bg-white/5'
-                }
-              >
-                <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-                  <span className="font-medium">{authorLabel(comment)}</span>
-                  <LocalTime iso={comment.createdAt} />
-                  {comment.isInternalNote && (
-                    <span className="rounded-full bg-amber-200 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-800 dark:text-amber-100">
-                      Internal note
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm whitespace-pre-wrap">{comment.message}</p>
+                  className={
+                    comment.isInternalNote
+                      ? 'max-w-[85%] min-w-0 rounded-2xl border border-dashed border-amber-300 bg-amber-50/80 px-4 py-3 shadow-xs [overflow-wrap:anywhere] dark:border-amber-800 dark:bg-amber-950/40'
+                      : comment.authorId === viewer.userId
+                        ? 'max-w-[85%] min-w-0 rounded-2xl border border-indigo-200/80 bg-indigo-50/50 px-4 py-3 shadow-xs [overflow-wrap:anywhere] dark:border-indigo-900/40 dark:bg-indigo-950/20'
+                        : 'max-w-[85%] min-w-0 rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-xs [overflow-wrap:anywhere] dark:border-white/10 dark:bg-white/5'
+                  }
+                >
+                  <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{authorLabel(comment)}</span>
+                    <span>·</span>
+                    <LocalTime iso={comment.createdAt} />
+                    {comment.isInternalNote && (
+                      <span className="rounded-full bg-amber-200 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-800 dark:text-amber-100">
+                        Internal note
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm whitespace-pre-wrap text-slate-800 dark:text-slate-200">{comment.message}</p>
                 </div>
               </li>
             ))}
           </ul>
         )}
-        <p aria-live="polite" className="h-5 text-xs italic text-neutral-600 dark:text-neutral-400" data-testid="typing">
+        <p aria-live="polite" className="h-5 text-xs italic text-slate-500 dark:text-slate-400" data-testid="typing">
           {typingText}
         </p>
       </section>

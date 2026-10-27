@@ -19,13 +19,13 @@ import { useHydrated } from '@/lib/use-hydrated';
 // page's JavaScript has loaded (see SubmitButton).
 
 export const inputClass =
-  'w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
+  'w-full rounded-xl border border-slate-200/90 bg-white/80 px-3.5 py-2 text-sm shadow-xs outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
 export const selectClass =
-  'w-full cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white/70 pl-3 pr-8 py-2 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
+  'w-full cursor-pointer appearance-none rounded-xl border border-slate-200/90 bg-white/80 pl-3.5 pr-8 py-2 text-sm shadow-xs outline-none transition hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
 export const inlineSelectClass =
-  'w-auto min-w-0 max-w-full cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white/70 pl-3 pr-8 py-1.5 text-sm font-medium shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
+  'w-auto min-w-0 max-w-full cursor-pointer appearance-none rounded-xl border border-slate-200/90 bg-white/80 pl-3 pr-8 py-1.5 text-sm font-medium shadow-xs outline-none transition hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
 export const buttonClass =
-  'rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg active:translate-y-px disabled:opacity-60';
+  'cursor-pointer rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-150 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] disabled:opacity-60';
 
 /**
  * Disabled until the page's JavaScript has loaded. Before that, a click would make the browser post the form
@@ -54,13 +54,13 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 export function Feedback({ state }: { state: FormState }) {
   if (state.error)
     return (
-      <p role="alert" className="break-words rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+      <p role="alert" className="break-words rounded-xl border border-red-200 bg-red-50/80 px-3.5 py-2.5 text-sm font-medium text-red-700 shadow-xs dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-300">
         {state.error}
       </p>
     );
   if (state.ok)
     return (
-      <div role="status" className="break-words rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:border-green-800 dark:bg-green-950/60 dark:text-green-300">
+      <div role="status" className="break-words rounded-xl border border-emerald-200 bg-emerald-50/80 px-3.5 py-2.5 text-sm font-medium text-emerald-700 shadow-xs dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-300">
         <p>{state.ok}</p>
       </div>
     );
@@ -368,7 +368,7 @@ export function DeleteCannedForm({ id, title }: { id: string; title: string }) {
         type="submit"
         disabled={pending || !hydrated}
         aria-label={`Delete ${title}`}
-        className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-60"
+        className="cursor-pointer rounded-lg border border-red-200/80 bg-red-50/70 px-2.5 py-1 text-xs font-semibold text-red-700 shadow-xs transition hover:bg-red-100 disabled:opacity-60 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-900/50"
       >
         {pending ? 'Deleting…' : 'Delete'}
       </button>
@@ -453,7 +453,8 @@ export function MemberControls({ member }: { member: TeamMember }) {
   const save = (change: { role?: string; isActive?: boolean }) =>
     startTransition(async () => setMessage(await updateMember(member.userId, change)));
   return (
-    <span className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Role:</span>
       <select
         key={member.role}
         aria-label={`Role of ${member.email}`}
@@ -470,7 +471,11 @@ export function MemberControls({ member }: { member: TeamMember }) {
         disabled={pending || !hydrated}
         onClick={() => save({ isActive: !member.isActive })}
         aria-label={`${member.isActive ? 'Deactivate' : 'Reactivate'} ${member.email}`}
-        className={`text-xs hover:underline disabled:opacity-60 ${member.isActive ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}
+        className={`cursor-pointer rounded-lg px-2.5 py-1 text-xs font-semibold transition disabled:opacity-60 ${
+          member.isActive
+            ? 'border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/60'
+            : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/60'
+        }`}
       >
         {member.isActive ? 'Deactivate' : 'Reactivate'}
       </button>
@@ -479,6 +484,6 @@ export function MemberControls({ member }: { member: TeamMember }) {
           {message.error}
         </span>
       )}
-    </span>
+    </div>
   );
 }

@@ -10,7 +10,16 @@ import type { CannedResponse, TeamMember, Ticket, TicketComment } from '@/lib/ty
 
 export default function TicketPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-600 dark:text-neutral-400">Loading ticket…</p>}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-16 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+            Loading ticket…
+          </div>
+        </div>
+      }
+    >
       <TicketDetail params={params} />
     </Suspense>
   );
@@ -40,11 +49,29 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="space-y-6">
-      <Link href="/tickets" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
-        ← Back to {staff ? 'queue' : 'my tickets'}
-      </Link>
+      {/* Back navigation */}
+      <div>
+        <Link
+          href="/tickets"
+          className="inline-flex items-center gap-1.5 rounded-lg text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300"
+        >
+          ← Back to {staff ? 'queue' : 'my tickets'}
+        </Link>
+      </div>
 
-      <h1 className="text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]">{ticket.subject}</h1>
+      {/* Ticket Subject Title */}
+      <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+              Ticket #{ticket.id.slice(0, 8)}
+            </span>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 [overflow-wrap:anywhere] dark:text-white sm:text-3xl">
+              {ticket.subject}
+            </h1>
+          </div>
+        </div>
+      </div>
 
       {/* Server-rendered with today's data; the socket keeps it current from here on. */}
       <LiveTicket
@@ -54,8 +81,16 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
         team={team.filter((member) => member.role !== 'CUSTOMER')}
       />
 
-      <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
-        <h2 className="font-medium">Reply</h2>
+      {/* Reply Section */}
+      <section className="space-y-4 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reply</h2>
+          {staff && (
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              Markdown supported · Real-time socket delivery
+            </span>
+          )}
+        </div>
         <CommentForm ticketId={ticket.id} canWriteInternalNote={staff} canned={canned} />
       </section>
     </div>
