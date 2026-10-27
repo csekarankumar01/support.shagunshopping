@@ -7,6 +7,7 @@ import { AccountStateService } from './account-state.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { RegistrationService } from './registration.service.js';
 import { RevocationService } from './revocation.service.js';
 import { RolesGuard } from './roles.guard.js';
 import { SessionService } from './session.service.js';
@@ -31,6 +32,7 @@ import { SessionService } from './session.service.js';
   providers: [
     AuthService,
     SessionService,
+    RegistrationService,
     RevocationService,
     AccountStateService,
     JwtAuthGuard,

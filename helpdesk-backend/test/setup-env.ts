@@ -10,4 +10,7 @@ process.env.REDIS_KEY_PREFIX = 'test:'; // tests get their own Redis keys, never
 process.env.KAFKA_TOPIC_PREFIX = 'test.'; // tests get their own Kafka topics, never the real ones
 // Rate limits are on in production and off here (the tests log in hundreds of times); rate-limit.e2e-spec.ts turns them on.
 process.env.RATE_LIMIT_DISABLED = 'true';
+// Sign-up verification is on in production; the shared test helpers create organisations directly. The dedicated
+// registration-verification.e2e-spec.ts turns it on.
+process.env.REQUIRE_EMAIL_VERIFICATION = 'false';
 process.loadEnvFile('../.env');

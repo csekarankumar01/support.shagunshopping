@@ -18,6 +18,8 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { InviteDto } from './dto/invite.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterOrgDto } from './dto/register-org.dto.js';
+import { ResendCodeDto, VerifyRegistrationDto } from './dto/verify-registration.dto.js';
+import { RegistrationService } from './registration.service.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import type { Role } from './role.js';
 import {
@@ -44,6 +46,8 @@ export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
   private readonly frontendUrl: string;
   private readonly registrationOpen: boolean;
+  /** REQUIRE_EMAIL_VERIFICATION=false creates the organisation at once (used by tests and quick local demos). */
+  private readonly requireVerification: boolean;
   /** A real bcrypt hash of nothing in particular, compared against when the account does not exist (see login). */
   private decoyHash = '';
 
@@ -52,10 +56,13 @@ export class AuthService implements OnModuleInit {
     private readonly jwt: JwtService,
     private readonly sessions: SessionService,
     private readonly mailer: MailerService,
+    private readonly registration: RegistrationService,
     config: ConfigService,
   ) {
     // A private deployment sets ALLOW_REGISTRATION=false so that nobody else can create organisations on it.
     this.registrationOpen = config.get<string>('ALLOW_REGISTRATION', 'true') !== 'false';
+    this.requireVerification =
+      config.get<string>('REQUIRE_EMAIL_VERIFICATION', 'true') !== 'false';
     this.frontendUrl = config
       .get<string>('FRONTEND_ORIGIN', 'http://localhost:4311')
       .split(',')[0]
@@ -69,12 +76,47 @@ export class AuthService implements OnModuleInit {
     );
   }
 
-  /** Creates the tenant and its first ADMIN atomically: both rows are saved or neither is. */
-  async registerOrg({ orgName, orgSlug, email, password }: RegisterOrgDto) {
+  /**
+   * Starts creating an organisation. With email verification on (the default) nothing is created yet: a 6-digit
+   * code is emailed and verifyRegistration() creates the organisation when it is entered.
+   */
+  async registerOrg(dto: RegisterOrgDto) {
     if (!this.registrationOpen) {
       throw new ForbiddenException('Registration is closed on this server');
     }
-    const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
+    if (this.requireVerification) return this.registration.start(dto);
+    return this.createOrganization({
+      orgName: dto.orgName,
+      orgSlug: dto.orgSlug,
+      email: dto.email,
+      passwordHash: await bcrypt.hash(dto.password, BCRYPT_COST),
+    });
+  }
+
+  /** The admin typed the emailed code: create the organisation and its first admin. */
+  async verifyRegistration(dto: VerifyRegistrationDto) {
+    if (!this.registrationOpen) {
+      throw new ForbiddenException('Registration is closed on this server');
+    }
+    return this.createOrganization(await this.registration.verify(dto));
+  }
+
+  resendRegistrationCode(dto: ResendCodeDto) {
+    return this.registration.resend(dto);
+  }
+
+  /** Creates the tenant and its first ADMIN atomically: both rows are saved or neither is. */
+  private async createOrganization({
+    orgName,
+    orgSlug,
+    email,
+    passwordHash,
+  }: {
+    orgName: string;
+    orgSlug: string;
+    email: string;
+    passwordHash: string;
+  }) {
     // Row-Level Security only lets us write rows of the "current" org, so the new org's id is generated
     // here and set as the tenant context before inserting.
     const orgId = randomUUID();

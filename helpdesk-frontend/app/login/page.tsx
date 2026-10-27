@@ -15,6 +15,13 @@ async function ExpiredNotice({ searchParams }: { searchParams: SearchParams }) {
       </p>
     );
   }
+  if (params.verified === '1') {
+    return (
+      <p role="status" className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+        Email verified and your organisation is ready. Sign in with the password you chose.
+      </p>
+    );
+  }
   if (params.expired !== '1') return null;
   return (
     <p role="status" className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-300">

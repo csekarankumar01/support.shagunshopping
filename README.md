@@ -67,7 +67,7 @@ Role checks in the UI only tidy the screen; the API guards are the real enforcem
 ## Feature tour
 
 **Accounts and access**
-- Organisation onboarding: registering creates the tenant and its first admin atomically.
+- Organisation onboarding with **email verification**: registering emails a 6-digit code to the admin; the tenant and its first admin are created (atomically) only when the code is entered. Codes last 10 minutes, are single-use, allow 5 wrong tries, and can be resent once a minute.
 - Login with bcrypt-hashed passwords and signed JWTs; invitations by email; forgot-password and reset-by-email flow.
 - Account page: change password, **sign out everywhere** (server-side session revocation), session-expiry notices.
 - Role-based access control (Admin, Agent, Customer) through NestJS guards.

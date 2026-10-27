@@ -76,6 +76,7 @@ erDiagram
 | `dead_letters` | events a background job gave up on (admin "Failed events" page) |
 | `outbox_events` | events waiting to be published to Kafka |
 | `refresh_tokens` | login sessions (hashes only) |
+| `pending_registrations` | sign-ups waiting for their emailed code (no organisation yet; expire after 10 minutes) |
 | `password_resets` | single-use reset and invitation links (hashes only) |
 
 **Platform data** (no `org_id`; only the super admin console can use it):

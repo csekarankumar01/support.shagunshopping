@@ -29,7 +29,7 @@ for (const scheme of ['light', 'dark'] as const) {
     test.use({ colorScheme: scheme });
 
     test('public pages', async ({ page }) => {
-      for (const path of ['/login', '/register', '/forgot-password', '/reset-password?token=abc']) {
+      for (const path of ['/login', '/register', '/forgot-password', '/reset-password?token=abc', '/verify-email?org=demo&email=a@b.co']) {
         await page.goto(path);
         await scan(page, path);
       }

@@ -16,6 +16,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { RefreshDto } from './dto/refresh.dto.js';
 import { RegisterOrgDto } from './dto/register-org.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { ResendCodeDto, VerifyRegistrationDto } from './dto/verify-registration.dto.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import type { AuthenticatedRequest } from './jwt-auth.guard.js';
 import { Roles } from './roles.decorator.js';
@@ -30,6 +31,32 @@ export class AuthController {
   @RateLimit({ name: 'register-org', limit: 20, windowSeconds: 3600, by: 'ip' })
   registerOrg(@Body() dto: RegisterOrgDto) {
     return this.authService.registerOrg(dto);
+  }
+
+  /** Step 2 of sign-up: the 6-digit code from the email creates the organisation and its admin. */
+  @Post('verify-registration')
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    name: 'verify-registration',
+    limit: 10,
+    windowSeconds: 600,
+    by: 'login-account',
+  })
+  verifyRegistration(@Body() dto: VerifyRegistrationDto) {
+    return this.authService.verifyRegistration(dto);
+  }
+
+  @Post('resend-registration-code')
+  @HttpCode(200)
+  @UseGuards(RateLimitGuard)
+  @RateLimit({
+    name: 'resend-registration-code',
+    limit: 5,
+    windowSeconds: 3600,
+    by: 'login-account',
+  })
+  resendRegistrationCode(@Body() dto: ResendCodeDto) {
+    return this.authService.resendRegistrationCode(dto);
   }
 
   /** Returns a short-lived access token and a rotating refresh token. */

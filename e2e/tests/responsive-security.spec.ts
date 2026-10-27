@@ -19,7 +19,7 @@ test.describe('phone-sized screen (375 px wide): nothing scrolls sideways', () =
   };
 
   test('public pages', async ({ page }) => {
-    for (const path of ['/login', '/register', '/forgot-password']) {
+    for (const path of ['/login', '/register', '/forgot-password', '/verify-email?org=demo&email=someone@example.com']) {
       await page.goto(path);
       await noSidewaysScroll(page, path);
     }
@@ -46,7 +46,7 @@ test.describe('phone-sized screen (375 px wide): nothing scrolls sideways', () =
 
 test.describe('security headers and cookies', () => {
   test('the web app sends the protective headers on every page', async ({ request }) => {
-    for (const path of ['/login', '/register', '/forgot-password']) {
+    for (const path of ['/login', '/register', '/forgot-password', '/verify-email?org=demo&email=someone@example.com']) {
       const res = await request.get(path);
       expect(res.headers()['x-frame-options']).toBe('DENY');
       expect(res.headers()['x-content-type-options']).toBe('nosniff');

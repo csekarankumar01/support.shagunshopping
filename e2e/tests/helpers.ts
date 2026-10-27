@@ -35,14 +35,30 @@ export interface Org {
 
 const unique = () => Math.random().toString(16).slice(2, 8);
 
+/** Remembers an organisation a test created, so the cleanup after the run removes it. */
+export function trackOrg(slug: string) {
+  appendFileSync(path.resolve(import.meta.dirname, '..', '.created-orgs.txt'), `${slug}
+`);
+}
+
+/** The 6-digit sign-up code emailed to `to` since `since`. */
+export async function verificationCode(to: string, since: number): Promise<string> {
+  const mail = await waitForMail(to, 'verification code', since);
+  return /\b(\d{6})\b/.exec(mail)![1];
+}
+
 /** A brand-new organisation with an admin, an agent and two customers. Every test file makes its own. */
 export async function createOrg(label: string): Promise<Org> {
   const slug = `${label}-${unique()}`;
-  appendFileSync(path.resolve(import.meta.dirname, '..', '.created-orgs.txt'), `${slug}
-`); // for the cleanup after the run
+  trackOrg(slug);
   const email = (name: string) => `${name}@${slug}.test`;
+  const since = now();
   const reg = await rest('/auth/register-org', 'POST', { orgName: `E2E ${label}`, orgSlug: slug, email: email('admin'), password: PASSWORD });
   if (reg.status !== 201) throw new Error(`register-org failed: ${reg.status} ${JSON.stringify(reg.body)}`);
+  // Sign-up is verified by an emailed code: read it from the dev mail inbox (Mailpit), exactly as a person would.
+  const code = await verificationCode(email('admin'), since);
+  const verified = await rest('/auth/verify-registration', 'POST', { orgSlug: slug, email: email('admin'), code });
+  if (verified.status !== 201) throw new Error(`verify-registration failed: ${verified.status} ${JSON.stringify(verified.body)}`);
   const loginAs = async (name: string): Promise<Person> => {
     const res = await rest<{ accessToken: string }>('/auth/login', 'POST', { orgSlug: slug, email: email(name), password: PASSWORD });
     if (res.status !== 200) throw new Error(`login ${name} failed: ${res.status}`);

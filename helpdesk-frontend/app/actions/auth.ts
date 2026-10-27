@@ -32,14 +32,41 @@ export async function register(_prev: FormState, data: FormData): Promise<FormSt
   const orgSlug = text(data, 'orgSlug').toLowerCase();
   const email = text(data, 'email');
   const password = String(data.get('password') ?? '');
+  let verificationRequired = false;
   try {
-    await apiPublic('/api/v1/auth/register-org', { orgSlug, orgName, email, password });
-    await signIn(orgSlug, email, password);
+    const created = await apiPublic<{ verificationRequired?: boolean }>('/api/v1/auth/register-org', { orgSlug, orgName, email, password });
+    verificationRequired = created.verificationRequired === true;
+    // With email verification switched off on the server the organisation exists already: sign straight in.
+    if (!verificationRequired) await signIn(orgSlug, email, password);
   } catch (err) {
     if (err instanceof ApiError) return { error: err.message, fields: { orgName, orgSlug, email } };
     throw err;
   }
+  // Otherwise a 6-digit code has been emailed; nothing exists until it is entered.
+  if (verificationRequired) redirect(`/verify-email?org=${encodeURIComponent(orgSlug)}&email=${encodeURIComponent(email)}`);
   redirect('/tickets');
+}
+
+/** Step 2 of sign-up: the emailed code creates the organisation. The password is not kept, so the person signs in next. */
+export async function verifyEmail(orgSlug: string, email: string, _prev: FormState, data: FormData): Promise<FormState> {
+  const code = text(data, 'code').replace(/\s/g, '');
+  try {
+    await apiPublic('/api/v1/auth/verify-registration', { orgSlug, email, code });
+  } catch (err) {
+    if (err instanceof ApiError) return { error: err.message };
+    throw err;
+  }
+  redirect(`/login?verified=1&org=${encodeURIComponent(orgSlug)}`);
+}
+
+export async function resendCode(orgSlug: string, email: string): Promise<FormState> {
+  try {
+    await apiPublic('/api/v1/auth/resend-registration-code', { orgSlug, email });
+  } catch (err) {
+    if (err instanceof ApiError) return { error: err.message };
+    throw err;
+  }
+  return { ok: 'If that sign-up is still open, a new code is on its way.' };
 }
 
 /** Ends this login on the server (so the tokens stop working at once, not just in this browser), then clears the cookies. */

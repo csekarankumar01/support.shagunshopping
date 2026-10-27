@@ -3,7 +3,7 @@
 import { useActionState, useRef, useState, useTransition } from 'react';
 import type { ReactNode } from 'react';
 import { changePassword, forgotPassword, resetPassword, signOutEverywhere } from '@/app/actions/account';
-import { invite, login, register } from '@/app/actions/auth';
+import { invite, login, register, resendCode, verifyEmail } from '@/app/actions/auth';
 import { createCanned, deleteCanned } from '@/app/actions/canned';
 import { updateMember } from '@/app/actions/team';
 import { addComment, assignTicket, createTicket, updateStatus } from '@/app/actions/tickets';
@@ -115,6 +115,46 @@ export function RegisterForm() {
       <Feedback state={state} />
       <SubmitButton pending={pending} idle="Create organisation" busy="Creating…" />
     </form>
+  );
+}
+
+/** Step 2 of sign-up: type the 6 digits from the email. */
+export function VerifyEmailForm({ orgSlug, email }: { orgSlug: string; email: string }) {
+  const [state, action, pending] = useActionState(verifyEmail.bind(null, orgSlug, email), {});
+  const [note, setNote] = useState<FormState>({});
+  const [resending, startResend] = useTransition();
+  const hydrated = useHydrated();
+  return (
+    <div className="space-y-4">
+      <form action={action} className="space-y-4">
+        <Field label="Verification code">
+          <input
+            name="code"
+            required
+            inputMode="numeric"
+            pattern="[0-9 ]{6,7}"
+            maxLength={7}
+            autoComplete="one-time-code"
+            autoFocus
+            placeholder="123456"
+            className={`${inputClass} text-center font-mono text-lg tracking-[0.4em]`}
+          />
+        </Field>
+        <Feedback state={state} />
+        <SubmitButton pending={pending} idle="Verify and create organisation" busy="Verifying…" />
+      </form>
+      <div className="space-y-2 text-sm">
+        <button
+          type="button"
+          disabled={resending || !hydrated}
+          onClick={() => startResend(async () => setNote(await resendCode(orgSlug, email)))}
+          className="text-indigo-600 hover:underline disabled:opacity-60 dark:text-indigo-400"
+        >
+          Send a new code
+        </button>
+        <Feedback state={note} />
+      </div>
+    </div>
   );
 }
 
