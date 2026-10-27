@@ -58,6 +58,33 @@ export class MailerService {
         text,
         html: html ?? this.textToHtml(text),
       });
+
+      // If Resend test sandbox blocks sending to external recipients (only allows account owner email),
+      // deliver to the account owner with the intended recipient clearly flagged so the flow never breaks.
+      if (error && error.message?.includes('only send testing emails to your own email address')) {
+        const ownerMatch = error.message.match(/own email address \(([^)]+)\)/);
+        const ownerEmail = ownerMatch ? ownerMatch[1] : undefined;
+        if (ownerEmail && ownerEmail !== to) {
+          this.logger.warn(
+            `Resend test sandbox restriction: delivering email intended for ${to} to verified owner ${ownerEmail}`,
+          );
+          const fallback = await this.resend.emails.send({
+            from: this.from,
+            to: ownerEmail,
+            subject: `[For: ${to}] ${subject}`,
+            text: `[Intended recipient: ${to}]\n\n${text}`,
+            html:
+              `<div style="padding: 10px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; margin-bottom: 16px; font-family: sans-serif; font-size: 13px; color: #92400e;">` +
+              `<strong>Resend Sandbox Notice:</strong> This email was intended for <code>${to}</code>.` +
+              `</div>` +
+              (html ?? this.textToHtml(text)),
+          });
+          if (!fallback.error) {
+            return fallback.data;
+          }
+        }
+      }
+
       if (error) {
         this.logger.error(`Resend email delivery failed to ${to}: ${error.message}`);
         throw new Error(`Resend error: ${error.message}`);
