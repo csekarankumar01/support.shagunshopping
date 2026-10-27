@@ -1,6 +1,7 @@
 import { NavLink } from '@/components/nav-link';
 import { logout } from '@/app/actions/auth';
 import { StaffLive } from '@/components/staff-live';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { getCurrentUser } from '@/lib/auth';
 import { isStaff } from '@/lib/constants';
 
@@ -50,12 +51,17 @@ export async function Nav() {
         <NavLink href="/account">
           Account
         </NavLink>
-        <span className="ml-auto rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">{user.role}</span>
-        <form action={logout}>
-          <button type="submit" className={linkClass}>
-            Sign out
-          </button>
-        </form>
+        <div className="ml-auto flex items-center gap-2.5">
+          <ThemeToggle />
+          <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+            {user.role}
+          </span>
+          <form action={logout}>
+            <button type="submit" className={linkClass}>
+              Sign out
+            </button>
+          </form>
+        </div>
       </nav>
       {staff && <StaffLive />}
     </header>
@@ -64,8 +70,14 @@ export async function Nav() {
 
 export function NavFallback() {
   return (
-    <header className="border-b border-slate-200/70 bg-white/75 dark:border-white/10">
-      <div className="mx-auto max-w-6xl px-4 py-3 font-semibold">Helpdesk</div>
+    <header className="border-b border-slate-200/70 bg-white/75 backdrop-blur-lg dark:border-white/10 dark:bg-[#0b1020]/70">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5 font-semibold">
+        <span className="flex items-center gap-2">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-sm text-white shadow-md shadow-indigo-600/30">H</span>
+          Helpdesk
+        </span>
+        <ThemeToggle />
+      </div>
     </header>
   );
 }

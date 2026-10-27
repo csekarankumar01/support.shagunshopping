@@ -5,6 +5,10 @@ export interface CurrentUser {
   userId: string;
   orgId: string;
   role: Role;
+  email?: string;
+  createdAt?: string;
+  orgName?: string;
+  orgSlug?: string;
 }
 
 export interface Ticket {

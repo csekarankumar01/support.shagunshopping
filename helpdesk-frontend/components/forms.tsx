@@ -434,7 +434,11 @@ export function SignOutEverywhereForm() {
   const hydrated = useHydrated();
   return (
     <form action={signOutEverywhere}>
-      <button type="submit" disabled={!hydrated} className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950">
+      <button
+        type="submit"
+        disabled={!hydrated}
+        className="w-full rounded-xl border border-red-300/80 bg-red-50/70 px-4 py-2.5 text-sm font-semibold text-red-700 shadow-sm transition-all duration-150 hover:bg-red-100 hover:shadow active:scale-[0.99] disabled:opacity-60 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/70"
+      >
         Sign out of all devices
       </button>
     </form>

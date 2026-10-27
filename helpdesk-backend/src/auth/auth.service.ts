@@ -448,4 +448,30 @@ export class AuthService implements OnModuleInit {
       throw err;
     }
   }
+
+  async getMe(user: AuthenticatedUser) {
+    const { rows } = await this.db.tenantQuery<{
+      email: string;
+      createdAt: string;
+      orgName: string;
+      orgSlug: string;
+    }>(
+      user.orgId,
+      `SELECT u.email, u.created_at AS "createdAt", o.name AS "orgName", o.slug AS "orgSlug"
+       FROM users u
+       JOIN organizations o ON o.id = u.org_id
+       WHERE u.org_id = $1 AND u.id = $2`,
+      [user.userId],
+    );
+    const details = rows[0];
+    return {
+      userId: user.userId,
+      orgId: user.orgId,
+      role: user.role,
+      email: details?.email ?? '',
+      createdAt: details?.createdAt ?? new Date().toISOString(),
+      orgName: details?.orgName ?? '',
+      orgSlug: details?.orgSlug ?? '',
+    };
+  }
 }
