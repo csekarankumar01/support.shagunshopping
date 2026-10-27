@@ -62,8 +62,10 @@ export class RevocationService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  onModuleDestroy() {
-    this.subscriber?.disconnect();
+  async onModuleDestroy() {
+    // QUIT lets a pending subscribe or unsubscribe finish; a hard disconnect would reject it with nobody listening.
+    const subscriber = this.subscriber;
+    await subscriber?.quit().catch(() => subscriber.disconnect());
   }
 
   /** The gateway registers here to disconnect sockets of revoked sessions. */
