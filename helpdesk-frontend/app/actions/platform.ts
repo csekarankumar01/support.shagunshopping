@@ -11,10 +11,12 @@ const text = (data: FormData, key: string) => String(data.get(key) ?? '').trim()
 export async function platformLogin(_prev: FormState, data: FormData): Promise<FormState> {
   const email = text(data, 'email');
   const password = String(data.get('password') ?? '');
+  const code = text(data, 'code').replace(/\s/g, '');
   try {
     const { accessToken, expiresIn } = await apiPublic<{ accessToken: string; expiresIn: number }>('/api/v1/platform/login', {
       email,
       password,
+      ...(code && { code }),
     });
     await setPlatformSession(accessToken, expiresIn);
   } catch (err) {

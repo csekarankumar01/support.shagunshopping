@@ -1,5 +1,6 @@
 import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import type { AccountStateService } from './account-state.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 import type { RevocationService } from './revocation.service.js';
 
@@ -8,7 +9,11 @@ const revoked = new Set<string>();
 const revocation = {
   isRevoked: async (sid: string) => revoked.has(sid),
 } as unknown as RevocationService;
-const guard = new JwtAuthGuard(jwt, revocation);
+let accountIsCurrent = true;
+const accounts = {
+  isCurrent: async () => accountIsCurrent,
+} as unknown as AccountStateService;
+const guard = new JwtAuthGuard(jwt, revocation, accounts);
 // Real login tokens always carry an expiry (JWT_EXPIRES_IN_SECONDS), so the test tokens do too.
 const sign = (payload: object, options: { expiresIn?: number } = {}) =>
   jwt.sign(payload, { expiresIn: 60, ...options });
@@ -31,6 +36,17 @@ const goodPayload = {
 };
 
 describe('JwtAuthGuard', () => {
+  afterEach(() => {
+    accountIsCurrent = true;
+  });
+
+  it('rejects a valid token whose account was switched off, suspended or re-roled in the database', async () => {
+    accountIsCurrent = false;
+    await expect(
+      guard.canActivate(requestWith(`Bearer ${sign(goodPayload)}`).context),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
   it('accepts a valid token and sets userId, orgId and role from it', async () => {
     const { request, context } = requestWith(`Bearer ${sign(goodPayload)}`);
     await expect(guard.canActivate(context)).resolves.toBe(true);

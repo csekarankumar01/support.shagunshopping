@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  Matches,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -22,6 +23,12 @@ export class PlatformLoginDto {
   @IsNotEmpty()
   @MaxLength(200)
   password!: string;
+
+  /** The 6-digit authenticator code, for admins who have two-factor switched on. */
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{6}$/, { message: 'code must be 6 digits' })
+  code?: string;
 }
 
 export class UpdateOrganizationDto {

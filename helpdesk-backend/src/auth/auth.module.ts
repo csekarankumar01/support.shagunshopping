@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { DatabaseModule } from '../database/database.module.js';
 import { MailModule } from '../mail/mail.module.js';
+import { AccountStateService } from './account-state.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
@@ -31,10 +32,12 @@ import { SessionService } from './session.service.js';
     AuthService,
     SessionService,
     RevocationService,
+    AccountStateService,
     JwtAuthGuard,
     RolesGuard,
   ],
   exports: [
+    AccountStateService,
     JwtAuthGuard,
     RolesGuard,
     JwtModule,

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
+import { AccountStateService } from './account-state.service.js';
 import { RevocationService } from './revocation.service.js';
 import { verifyToken } from './verify-token.js';
 import type { AuthenticatedUser } from './verify-token.js';
@@ -25,6 +26,7 @@ export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwt: JwtService,
     private readonly revocation: RevocationService,
+    private readonly accounts: AccountStateService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -40,6 +42,11 @@ export class JwtAuthGuard implements CanActivate {
     );
     if (await this.revocation.isRevoked(sid)) {
       throw new UnauthorizedException('Invalid or expired token'); // same message as any other bad token
+    }
+    // A person switched off, an organisation suspended or a role changed directly in the database leaves no
+    // revoked session behind, so ask the database (cached for a few seconds).
+    if (!(await this.accounts.isCurrent(user))) {
+      throw new UnauthorizedException('Invalid or expired token');
     }
     request.user = user;
     request.sid = sid;

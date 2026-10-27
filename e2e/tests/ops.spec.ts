@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createOrg, createTicket, dockerAvailable, docker, now, psql, redisCli, rest, signIn, waitForMail } from './helpers';
+import { backendInDocker, createOrg, createTicket, dockerAvailable, docker, now, psql, redisCli, rest, signIn, waitForMail } from './helpers';
 import type { Org } from './helpers';
 
 // These tests reach into the running Docker stack (Postgres, Redis, the API container). They are skipped without it.
@@ -86,6 +86,7 @@ test('a public staff reply stops the SLA clock', async () => {
 });
 
 test('the page reconnects by itself after the API restarts and keeps receiving messages', async ({ browser }) => {
+  test.skip(!backendInDocker(), 'restarts the helpdesk-backend container, so the API must be the Docker one (not `npm run dev`)');
   const id = await createTicket(org.customer.token, 'Restart me');
   const context = await browser.newContext();
   const customer = await context.newPage();

@@ -37,7 +37,7 @@ export class PlatformController {
   @UseGuards(RateLimitGuard)
   @RateLimit({ name: 'platform-login', limit: 10, windowSeconds: 60, by: 'ip' })
   login(@Body() dto: PlatformLoginDto) {
-    return this.platform.login(dto.email, dto.password);
+    return this.platform.login(dto.email, dto.password, dto.code);
   }
 
   @Get('me')

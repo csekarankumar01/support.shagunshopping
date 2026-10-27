@@ -193,9 +193,13 @@ describe('live chat over WebSocket', () => {
     it('drops the socket when the login session it came from ends', async () => {
       const jwt = app.get(JwtService, { strict: false });
       const sessionExp = Math.floor(Date.now() / 1000) + 2;
+      // A real user: the handshake also checks the account still exists and is active.
+      const agentId = (
+        await http(app).get('/api/v1/auth/me').set(auth(a.agent))
+      ).body.userId as string;
       const token = jwt.sign(
         {
-          sub: 'x',
+          sub: agentId,
           orgId: a.orgId,
           role: 'AGENT',
           sid: 'session-expiry-test',

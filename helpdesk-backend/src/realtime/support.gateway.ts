@@ -11,6 +11,7 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import type { Namespace, Socket } from 'socket.io';
+import { AccountStateService } from '../auth/account-state.service.js';
 import { RevocationService } from '../auth/revocation.service.js';
 import { verifyToken } from '../auth/verify-token.js';
 import type { AuthenticatedUser } from '../auth/verify-token.js';
@@ -73,6 +74,7 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
     private readonly db: DatabaseService,
     private readonly presence: PresenceService,
     private readonly revocation: RevocationService,
+    private readonly accounts: AccountStateService,
     private readonly metrics: MetricsService,
     config: ConfigService,
   ) {
@@ -112,6 +114,10 @@ export class SupportGateway implements OnGatewayInit, OnGatewayConnection {
         );
         if (await this.revocation.isRevoked(sid)) {
           // logged out, deactivated, or password changed
+          return next(new Error('unauthorized'));
+        }
+        if (!(await this.accounts.isCurrent(user))) {
+          // switched off, suspended or re-roled directly in the database
           return next(new Error('unauthorized'));
         }
         socket.data = { user, sid, sessionExp } satisfies SocketData;

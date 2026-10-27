@@ -23,6 +23,17 @@ export function PlatformLoginForm() {
       <Field label="Password">
         <input name="password" type="password" required className={inputClass} autoComplete="current-password" />
       </Field>
+      <Field label={state.error === 'Two-factor code required' ? 'Authenticator code (required for this account)' : 'Authenticator code (only if two-factor is on)'}>
+        <input
+          name="code"
+          inputMode="numeric"
+          pattern="[0-9 ]{6,7}"
+          maxLength={7}
+          autoComplete="one-time-code"
+          autoFocus={state.error === 'Two-factor code required'}
+          className={inputClass}
+        />
+      </Field>
       <Feedback state={state} />
       <SubmitButton pending={pending} idle="Sign in" busy="Signing in…" />
     </form>

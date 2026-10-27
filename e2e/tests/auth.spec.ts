@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addUser, API, cookie, createOrg, linkIn, now, PASSWORD, rest, signIn, waitForMail } from './helpers';
+import { addUser, API, cookie, createOrg, linkIn, now, PASSWORD, rest, signIn, visit, waitForMail } from './helpers';
 import type { Org } from './helpers';
 
 let org: Org;
@@ -32,7 +32,7 @@ test.describe('sessions', () => {
     const before = await tokensOf(context);
 
     await context.clearCookies({ name: 'helpdesk_token' });
-    await page.goto('/tickets');
+    await visit(page, '/tickets');
     await expect(page.getByRole('heading', { name: 'Ticket queue' })).toBeVisible();
     const after = await tokensOf(context);
     expect(after.refresh).not.toBe(before.refresh); // rotated (the access token can match if issued in the same second)
@@ -49,7 +49,7 @@ test.describe('sessions', () => {
     await page.getByRole('button', { name: 'Sign out' }).click();
     await expect(page).toHaveURL(/\/login/);
     expect(await cookie(context, 'helpdesk_token')).toBeUndefined();
-    expect(await cookie(context, 'helpdesk_refresh')).toBeUndefined();
+    await expect.poll(() => cookie(context, 'helpdesk_refresh')).toBeUndefined();
     expect((await rest('/auth/refresh', 'POST', { refreshToken: refresh })).status).toBe(401);
     expect((await rest('/auth/me', 'GET', undefined, access)).status).toBe(401); // still "valid" for minutes, but revoked
   });
@@ -60,10 +60,10 @@ test.describe('sessions', () => {
     const { refresh } = await tokensOf(context);
     await rest('/auth/logout', 'POST', { refreshToken: refresh }); // e.g. signed out from another device
     await context.clearCookies({ name: 'helpdesk_token' });
-    await page.goto('/tickets');
+    await visit(page, '/tickets');
     await expect(page).toHaveURL(/\/login\?expired=1/);
     await expect(page.getByText('Your session has ended')).toBeVisible();
-    expect(await cookie(context, 'helpdesk_refresh')).toBeUndefined();
+    await expect.poll(() => cookie(context, 'helpdesk_refresh')).toBeUndefined();
   });
 
   test('forged cookies are rejected', async ({ page, context }) => {
@@ -72,7 +72,7 @@ test.describe('sessions', () => {
       { name: 'helpdesk_token', value: 'forged.token.value', url: page.url(), httpOnly: true, sameSite: 'Lax' },
       { name: 'helpdesk_refresh', value: 'forged', url: page.url(), httpOnly: true, sameSite: 'Lax' },
     ]);
-    await page.goto('/tickets');
+    await visit(page, '/tickets');
     await expect(page).toHaveURL(/\/login\?expired=1/);
   });
 
@@ -160,10 +160,10 @@ test.describe('passwords', () => {
     await page.getByRole('button', { name: 'Change password' }).click();
     await expect(page.getByText('Password changed')).toBeVisible();
 
-    await page.goto('/tickets');
+    await visit(page, '/tickets');
     await expect(page.getByRole('heading', { name: 'Ticket queue' })).toBeVisible(); // this device stays signed in
     await otherContext.clearCookies({ name: 'helpdesk_token' });
-    await other.goto('/tickets');
+    await visit(other, '/tickets');
     await expect(other).toHaveURL(/\/login/); // the other device does not
 
     await signIn(other, org.slug, user.email, 'Changed-pass-456');
@@ -171,9 +171,9 @@ test.describe('passwords', () => {
     await page.getByRole('button', { name: 'Sign out of all devices' }).click();
     await expect(page).toHaveURL(/\/login/);
     await otherContext.clearCookies({ name: 'helpdesk_token' });
-    await other.goto('/tickets');
+    await visit(other, '/tickets');
     await expect(other).toHaveURL(/\/login/);
-    expect(await cookie(context, 'helpdesk_refresh')).toBeUndefined();
+    await expect.poll(() => cookie(context, 'helpdesk_refresh')).toBeUndefined();
     await otherContext.close();
   });
 });
@@ -185,7 +185,7 @@ test.describe('members (admin)', () => {
     const admin = await adminContext.newPage();
     await signIn(admin, org.slug, org.admin.email);
     await signIn(page, org.slug, agent.email);
-    await page.goto('/tickets');
+    await visit(page, '/tickets');
     await expect(page.locator('[data-connection=live]')).toBeVisible({ timeout: 15_000 }).catch(() => undefined);
 
     await admin.goto('/team');
@@ -196,7 +196,7 @@ test.describe('members (admin)', () => {
 
     expect((await rest('/auth/me', 'GET', undefined, agent.token)).status).toBe(401); // cut off at once
     await page.context().clearCookies({ name: 'helpdesk_token' });
-    await page.goto('/tickets');
+    await visit(page, '/tickets');
     await expect(page).toHaveURL(/\/login/);
     await page.getByLabel('Organisation (slug)').fill(org.slug);
     await page.getByLabel('Email').fill(agent.email);
@@ -210,9 +210,12 @@ test.describe('members (admin)', () => {
     await expect(page.getByRole('heading', { name: 'Ticket queue' })).toBeVisible();
 
     await admin.getByLabel(`Role of ${agent.email}`).selectOption('CUSTOMER');
-    await expect.poll(async () => (await rest<{ role: string }>('/auth/me', 'GET', undefined, agent.token)).status).toBe(401);
+    // Wait for the change itself (the old token was already revoked by the deactivation above, so it proves nothing).
+    await expect
+      .poll(async () => (await rest<{ email: string; role: string }[]>('/team', 'GET', undefined, org.admin.token)).body.find((m) => m.email === agent.email)?.role)
+      .toBe('CUSTOMER');
     await page.context().clearCookies({ name: 'helpdesk_token' });
-    await page.goto('/tickets');
+    await visit(page, '/tickets');
     await expect(page).toHaveURL(/\/login/);
     await signIn(page, org.slug, agent.email);
     await expect(page.getByRole('heading', { name: 'My tickets' })).toBeVisible();

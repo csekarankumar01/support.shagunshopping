@@ -141,4 +141,24 @@ export const psql = (sql: string) =>
 export const redisCli = (...args: string[]) =>
   execFileSync('docker', ['exec', 'helpdesk-redis', 'redis-cli', '-a', fromEnv('REDIS_PASSWORD')!, '--no-auth-warning', ...args], { encoding: 'utf8' }).trim();
 
+/** True when the API is running as the Docker container (and so can be restarted by a test). */
+export const backendInDocker = () => {
+  try {
+    return execFileSync('docker', ['inspect', '-f', '{{.State.Running}}', 'helpdesk-backend'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim() === 'true';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Opens a page that is expected to redirect (to /login). The Next.js dev server sometimes cancels the first navigation
+ * of such a redirect (net::ERR_ABORTED) while it follows it in the browser; the production build does not. The test
+ * then asserts where the page ended up, so tolerating the cancelled first request hides nothing.
+ */
+export async function visit(page: Page, url: string) {
+  await page.goto(url).catch((error: Error) => {
+    if (!/ERR_ABORTED/.test(error.message)) throw error;
+  });
+}
+
 export const docker = (...args: string[]) => execFileSync('docker', args, { encoding: 'utf8' }).trim();

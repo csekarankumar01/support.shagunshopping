@@ -259,11 +259,13 @@ The operator of the service has a separate **platform console** at `/platform`, 
 organisation, user and ticket (internal notes included, read-only), edit an organisation's name, plan and SLA, suspend or
 reactivate it, and change a user's role or switch them off. Everything it changes, and every ticket it opens, is written
 to an append-only audit log. Its login and token are separate from organisation logins (neither works in place of the
-other), and a super admin can only be created from the server:
+other), and a super admin can only be created from the server. Sign-in supports two-factor codes (TOTP: Google Authenticator, Microsoft
+Authenticator, Authy); set `PLATFORM_REQUIRE_2FA=true` in production so an admin without it cannot sign in:
 
 ```bash
 cd helpdesk-backend
 npm run platform:create-admin -- you@example.com      # prints a generated password once
+npm run platform:2fa -- you@example.com               # adds the authenticator app (add --off to remove it)
 ```
 
 Database guide with diagram, readable `v_*` views and editing tips: [`docs/DATABASE.md`](docs/DATABASE.md).

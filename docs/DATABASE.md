@@ -31,9 +31,10 @@ the restricted role `helpdesk_app`, so through the app each organisation sees on
 Edit the **tables** directly in DBeaver (as the owner; Row-Level Security does not apply to the owner). Good to know:
 
 - `users.email` must be lowercase (a check constraint enforces it).
-- Setting `users.is_active = false` stops that person signing in, but their open session lasts until its access token
-  expires (up to about 15 minutes). The app's own screens end sessions immediately; a direct SQL edit cannot.
-- Suspending an organisation: set `organizations.suspended_at = now()`. Same caveat; prefer the platform console.
+- Setting `users.is_active = false`, changing `users.role`, or setting `organizations.suspended_at = now()` takes effect
+  within about 5 seconds: the API re-checks the database (briefly cached) on every request and WebSocket connection, so
+  a person's open session stops working even though a direct SQL edit cannot revoke it. Their refresh token is refused too.
+  The platform console does the same immediately and also writes an audit record, so prefer it.
 - Never put a plain password into `password_hash`. Use the app or `npm run platform:create-admin`.
 
 For routine changes (plan, SLA, suspend, roles, deactivation) use the **Platform console** at `/platform`; it also ends

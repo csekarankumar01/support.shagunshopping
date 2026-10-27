@@ -1,10 +1,12 @@
 import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import type { PoolClient } from 'pg';
@@ -12,6 +14,7 @@ import { RevocationService } from '../auth/revocation.service.js';
 import { DatabaseService } from '../database/database.service.js';
 import type { Role } from '../auth/role.js';
 import { ROLES } from '../auth/role.js';
+import { decryptSecret, verifyCode } from './totp.js';
 
 /** A platform login lasts one hour; there is no refresh, the operator simply signs in again. */
 export const PLATFORM_TOKEN_SECONDS = 3600;
@@ -32,12 +35,20 @@ export interface PlatformAdmin {
 @Injectable()
 export class PlatformService {
   private decoyHash = bcrypt.hashSync(randomBytes(16).toString('hex'), 10);
+  private readonly appSecret: string;
+  /** In production set PLATFORM_REQUIRE_2FA=true: a super admin without two-factor then cannot sign in at all. */
+  private readonly requireTwoFactor: boolean;
 
   constructor(
     private readonly db: DatabaseService,
     private readonly jwt: JwtService,
     private readonly revocation: RevocationService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.appSecret = config.getOrThrow<string>('JWT_SECRET');
+    this.requireTwoFactor =
+      config.get<string>('PLATFORM_REQUIRE_2FA', 'false') === 'true';
+  }
 
   private audit(
     client: PoolClient,
@@ -67,18 +78,44 @@ export class PlatformService {
 
   // ------------------------------------------------------------------ login
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string, code?: string) {
     const { rows } = await this.db.query<{
       id: string;
       email: string;
       password_hash: string;
       is_active: boolean;
-    }>('SELECT id, email, password_hash, is_active FROM platform_lookup_admin($1)', [email]);
+      totp_secret: string | null;
+      totp_enabled: boolean;
+      totp_last_step: string;
+    }>('SELECT id, email, password_hash, is_active, totp_secret, totp_enabled, totp_last_step FROM platform_lookup_admin($1)', [email]);
     const admin = rows[0];
     // One bcrypt comparison whether or not the account exists, and one message for every failure.
     const ok = await bcrypt.compare(password, admin?.password_hash ?? this.decoyHash);
     if (!admin || !ok || !admin.is_active) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+    // Only said after the password was right, so a stranger learns nothing about who has two-factor.
+    if (admin.totp_enabled && admin.totp_secret) {
+      if (!code) throw new UnauthorizedException('Two-factor code required');
+      const step = verifyCode(
+        decryptSecret(admin.totp_secret, this.appSecret),
+        code,
+        Number(admin.totp_last_step),
+      );
+      const used =
+        step === null
+          ? false
+          : (
+              await this.db.query<{ used: boolean }>(
+                'SELECT platform_use_totp_step($1, $2) AS used',
+                [admin.id, step],
+              )
+            ).rows[0].used;
+      if (!used) throw new UnauthorizedException('Invalid credentials');
+    } else if (this.requireTwoFactor) {
+      throw new ForbiddenException(
+        'Two-factor sign-in must be set up first: run "npm run platform:2fa -- <email>" on the server.',
+      );
     }
     await this.db.query('SELECT platform_touch_login($1)', [admin.id]);
     await this.db.platformTransaction((c) =>

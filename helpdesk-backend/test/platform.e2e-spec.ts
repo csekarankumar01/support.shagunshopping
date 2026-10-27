@@ -3,6 +3,12 @@ import { INestApplication } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import pg from 'pg';
 import {
+  codeForStep,
+  encryptSecret,
+  generateSecret,
+  stepAt,
+} from '../src/platform/totp.js';
+import {
   appRoleClient,
   auth,
   createTenant,
@@ -223,6 +229,51 @@ describe('platform (super) admin', () => {
       expect(res.body.map((r: { action: string }) => r.action)).toEqual(
         expect.arrayContaining(['ORG_UPDATED', 'USER_UPDATED', 'TICKET_VIEWED']),
       );
+    });
+  });
+
+  describe('two-factor sign-in', () => {
+    const secret = generateSecret();
+    const login = (code?: string, password = PASSWORD) =>
+      http(app).post(`${P}/login`).send({ email, password, ...(code && { code }) });
+
+    afterAll(async () => {
+      await owner.query(
+        'UPDATE platform_admins SET totp_enabled = false, totp_secret = NULL, totp_last_step = 0 WHERE id = $1',
+        [adminId],
+      );
+    });
+
+    it('needs the authenticator code once switched on, and a code only works once', async () => {
+      await owner.query(
+        'UPDATE platform_admins SET totp_enabled = true, totp_secret = $2, totp_last_step = 0 WHERE id = $1',
+        [adminId, encryptSecret(secret, process.env.JWT_SECRET!)],
+      );
+      const step = stepAt(Date.now());
+
+      // The prompt for a code appears only after the password was right.
+      const noCode = await login();
+      expect(noCode.status).toBe(401);
+      expect(noCode.body.message).toBe('Two-factor code required');
+      const wrongPassword = await login(codeForStep(secret, step), 'wrong-password');
+      expect(wrongPassword.status).toBe(401);
+      expect(wrongPassword.body.message).toBe('Invalid credentials');
+
+      expect((await login('000000')).body.message).toBe('Invalid credentials');
+      expect((await login('12345')).status).toBe(400);
+
+      const good = await login(codeForStep(secret, step));
+      expect(good.status).toBe(200);
+      expect(good.body.accessToken).toBeTruthy();
+      // The same code again is a replay.
+      expect((await login(codeForStep(secret, step))).status).toBe(401);
+      // The next window's code is fine (the clock may be a window ahead).
+      expect((await login(codeForStep(secret, step + 1))).status).toBe(200);
+    });
+
+    it('the secret is stored encrypted, not as typed', async () => {
+      const row = await owner.query<{ totp_secret: string }>('SELECT totp_secret FROM platform_admins WHERE id = $1', [adminId]);
+      expect(row.rows[0].totp_secret).not.toContain(secret);
     });
   });
 
