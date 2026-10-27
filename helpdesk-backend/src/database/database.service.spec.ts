@@ -40,6 +40,7 @@ describe('DatabaseService tenant queries', () => {
     calls.length = 0;
     const config = {
       getOrThrow: (key: string) => (key === 'POSTGRES_PORT' ? '5432' : 'x'),
+      get: () => undefined, // optional settings (POSTGRES_SSL) are unset
     } as unknown as ConfigService;
     const service = new DatabaseService(config);
     const client = {
