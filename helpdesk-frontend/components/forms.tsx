@@ -1,9 +1,11 @@
 'use client';
 
-import { useActionState, useRef } from 'react';
+import { useActionState, useRef, useState, useTransition } from 'react';
 import type { ReactNode } from 'react';
+import { changePassword, forgotPassword, resetPassword, signOutEverywhere } from '@/app/actions/account';
 import { invite, login, register } from '@/app/actions/auth';
 import { createCanned, deleteCanned } from '@/app/actions/canned';
+import { updateMember } from '@/app/actions/team';
 import { addComment, assignTicket, createTicket, updateStatus } from '@/app/actions/tickets';
 import { TICKET_PRIORITIES, TICKET_STATUSES } from '@/lib/constants';
 import type { TicketStatus } from '@/lib/constants';
@@ -54,7 +56,7 @@ function Feedback({ state }: { state: FormState }) {
     );
   if (state.ok)
     return (
-      <p role="status" className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:bg-green-950 dark:text-green-300">
+      <p role="status" className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:text-green-400 dark:bg-green-950 dark:text-green-300">
         {state.ok}
       </p>
     );
@@ -227,8 +229,9 @@ export function InviteForm() {
       <Field label="Email">
         <input name="email" type="email" required defaultValue={state.fields?.email} className={inputClass} />
       </Field>
-      <Field label="Temporary password (at least 8 characters)">
-        <input name="password" type="password" required minLength={8} className={inputClass} autoComplete="new-password" />
+      <Field label="Password (optional)">
+        <input name="password" type="password" minLength={8} maxLength={72} className={inputClass} autoComplete="new-password" />
+        <span className="block text-xs text-neutral-600 dark:text-neutral-400">Leave blank and they get an email with a link to choose their own.</span>
       </Field>
       <Field label="Role">
         <select name="role" defaultValue={state.fields?.role ?? 'AGENT'} className={inputClass}>
@@ -287,11 +290,113 @@ export function DeleteCannedForm({ id, title }: { id: string; title: string }) {
         type="submit"
         disabled={pending || !hydrated}
         aria-label={`Delete ${title}`}
-        className="text-sm text-red-600 hover:underline disabled:opacity-60"
+        className="text-sm text-red-600 dark:text-red-400 hover:underline disabled:opacity-60"
       >
         {pending ? 'Deleting…' : 'Delete'}
       </button>
       <Feedback state={state} />
     </form>
+  );
+}
+
+export function ForgotPasswordForm() {
+  const [state, action, pending] = useActionState(forgotPassword, {});
+  return (
+    <form action={action} className="space-y-4">
+      <Field label="Organisation (slug)">
+        <input name="orgSlug" required defaultValue={state.fields?.orgSlug} className={inputClass} autoComplete="organization" />
+      </Field>
+      <Field label="Email">
+        <input name="email" type="email" required defaultValue={state.fields?.email} className={inputClass} autoComplete="email" />
+      </Field>
+      <Feedback state={state} />
+      <SubmitButton pending={pending} idle="Email me a reset link" busy="Sending…" />
+    </form>
+  );
+}
+
+export function ResetPasswordForm({ token }: { token: string }) {
+  const [state, action, pending] = useActionState(resetPassword, {});
+  return (
+    <form action={action} className="space-y-4">
+      <input type="hidden" name="token" value={token} />
+      <Field label="New password (8 to 72 characters)">
+        <input name="newPassword" type="password" required minLength={8} maxLength={72} className={inputClass} autoComplete="new-password" />
+      </Field>
+      <Field label="Repeat the new password">
+        <input name="confirm" type="password" required minLength={8} maxLength={72} className={inputClass} autoComplete="new-password" />
+      </Field>
+      <Feedback state={state} />
+      <SubmitButton pending={pending} idle="Set password" busy="Saving…" />
+    </form>
+  );
+}
+
+export function ChangePasswordForm() {
+  const [state, action, pending] = useActionState(changePassword, {});
+  return (
+    <form action={action} className="space-y-4">
+      <Field label="Current password">
+        <input name="currentPassword" type="password" required className={inputClass} autoComplete="current-password" />
+      </Field>
+      <Field label="New password (8 to 72 characters)">
+        <input name="newPassword" type="password" required minLength={8} maxLength={72} className={inputClass} autoComplete="new-password" />
+      </Field>
+      <Field label="Repeat the new password">
+        <input name="confirm" type="password" required minLength={8} maxLength={72} className={inputClass} autoComplete="new-password" />
+      </Field>
+      <Feedback state={state} />
+      <SubmitButton pending={pending} idle="Change password" busy="Saving…" />
+    </form>
+  );
+}
+
+/** A plain form whose action signs the user out of every device. */
+export function SignOutEverywhereForm() {
+  const hydrated = useHydrated();
+  return (
+    <form action={signOutEverywhere}>
+      <button type="submit" disabled={!hydrated} className="rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:text-red-300 dark:hover:bg-red-950">
+        Sign out of all devices
+      </button>
+    </form>
+  );
+}
+
+/** Role and on/off controls for one member (admin only; the API enforces the same rules). */
+export function MemberControls({ member }: { member: TeamMember }) {
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<FormState>({});
+  const hydrated = useHydrated();
+  const save = (change: { role?: string; isActive?: boolean }) =>
+    startTransition(async () => setMessage(await updateMember(member.userId, change)));
+  return (
+    <span className="flex flex-wrap items-center gap-2">
+      <select
+        key={member.role}
+        aria-label={`Role of ${member.email}`}
+        defaultValue={member.role}
+        disabled={pending || !hydrated}
+        onChange={(event) => save({ role: event.target.value })}
+        className={`${inputClass} w-auto py-1`}
+      >
+        <option value="AGENT">AGENT</option>
+        <option value="CUSTOMER">CUSTOMER</option>
+      </select>
+      <button
+        type="button"
+        disabled={pending || !hydrated}
+        onClick={() => save({ isActive: !member.isActive })}
+        aria-label={`${member.isActive ? 'Deactivate' : 'Reactivate'} ${member.email}`}
+        className={`text-sm hover:underline disabled:opacity-60 ${member.isActive ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}
+      >
+        {member.isActive ? 'Deactivate' : 'Reactivate'}
+      </button>
+      {message.error && (
+        <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+          {message.error}
+        </span>
+      )}
+    </span>
   );
 }

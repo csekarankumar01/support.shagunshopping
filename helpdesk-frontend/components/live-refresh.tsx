@@ -22,6 +22,10 @@ export function LiveRefresh() {
     socket.on('ticket:created', refreshSoon);
     socket.on('ticket:assigned', refreshSoon);
     socket.on('sla:breached', refreshSoon);
+    // The page was rendered on the server before this socket existed, and the server's "someone came online" message
+    // can arrive before this component has even mounted. So read the data once more as soon as the socket is up.
+    if (socket.connected) refreshSoon();
+    else socket.once('connect', refreshSoon);
     const stopReloading = onReconnect(refreshSoon);
     return () => {
       clearTimeout(pending);
@@ -30,6 +34,7 @@ export function LiveRefresh() {
       socket.off('ticket:created', refreshSoon);
       socket.off('ticket:assigned', refreshSoon);
       socket.off('sla:breached', refreshSoon);
+      socket.off('connect', refreshSoon);
       stopReloading();
       release();
     };

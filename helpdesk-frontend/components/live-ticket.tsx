@@ -189,7 +189,7 @@ export function LiveTicket({
               <AssignForm ticketId={ticket.id} current={assigneeId} staff={team} myId={viewer.userId} />
             </div>
             {ticket.firstResponseAt && (
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
                 First reply <LocalTime iso={ticket.firstResponseAt} />
               </p>
             )}
@@ -200,7 +200,7 @@ export function LiveTicket({
       <section className="space-y-3">
         <h2 className="font-medium">Conversation</h2>
         {conversation.length === 0 ? (
-          <p className="text-sm text-neutral-500">No messages yet.</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">No messages yet.</p>
         ) : (
           <ul className="space-y-3">
             {conversation.map((comment) => (
@@ -212,7 +212,7 @@ export function LiveTicket({
                     : 'rounded-md border border-neutral-200 px-4 py-3 [overflow-wrap:anywhere] dark:border-neutral-800'
                 }
               >
-                <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
                   <span className="font-medium">{authorLabel(comment)}</span>
                   <LocalTime iso={comment.createdAt} />
                   {comment.isInternalNote && (
@@ -226,7 +226,7 @@ export function LiveTicket({
             ))}
           </ul>
         )}
-        <p aria-live="polite" className="h-5 text-xs italic text-neutral-500" data-testid="typing">
+        <p aria-live="polite" className="h-5 text-xs italic text-neutral-600 dark:text-neutral-400" data-testid="typing">
           {typingText}
         </p>
       </section>

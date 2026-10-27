@@ -1,30 +1,30 @@
 import 'server-only';
 import { cookies } from 'next/headers';
-import { TOKEN_COOKIE } from './constants';
-
-// Same lifetime as the JWT (JWT_EXPIRES_IN_SECONDS=3600 on the backend), so the browser
-// drops the cookie at the moment the token stops being valid.
-const MAX_AGE_SECONDS = 60 * 60;
+import { sessionCookies } from './cookies';
+import type { SessionTokens } from './cookies';
+import { REFRESH_COOKIE, TOKEN_COOKIE } from './constants';
 
 /**
- * The JWT lives only in this httpOnly cookie. Page JavaScript cannot read it, so a script-injection
- * bug cannot steal it; the browser just attaches it to requests to this Next.js server, which adds
- * the Authorization header when it calls the API.
+ * A login is two httpOnly cookies: a short-lived access token (what every API call carries) and a long-lived
+ * refresh token (only ever sent to the API's /auth/refresh and /auth/logout). Page JavaScript can read neither,
+ * so a script-injection bug cannot steal them; the browser only sends them to this Next.js server, which adds the
+ * Authorization header when it calls the API. `proxy.ts` renews the access token shortly before it expires.
  */
 export async function getToken() {
   return (await cookies()).get(TOKEN_COOKIE)?.value;
 }
 
-export async function setToken(token: string) {
-  (await cookies()).set(TOKEN_COOKIE, token, {
-    httpOnly: true,
-    sameSite: 'lax', // not sent on cross-site POSTs: the browser-side half of CSRF protection
-    secure: process.env.NODE_ENV === 'production',
-    path: '/',
-    maxAge: MAX_AGE_SECONDS,
-  });
+export async function getRefreshToken() {
+  return (await cookies()).get(REFRESH_COOKIE)?.value;
 }
 
-export async function clearToken() {
-  (await cookies()).delete(TOKEN_COOKIE);
+export async function setSession(tokens: SessionTokens) {
+  const store = await cookies();
+  for (const { name, value, ...options } of sessionCookies(tokens)) store.set(name, value, options);
+}
+
+export async function clearSession() {
+  const store = await cookies();
+  store.delete(TOKEN_COOKIE);
+  store.delete(REFRESH_COOKIE);
 }

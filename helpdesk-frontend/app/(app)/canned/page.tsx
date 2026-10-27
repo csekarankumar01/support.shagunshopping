@@ -6,7 +6,7 @@ import type { CannedResponse } from '@/lib/types';
 
 export default function CannedPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-neutral-600 dark:text-neutral-400">Loading…</p>}>
       <Canned />
     </Suspense>
   );
@@ -21,7 +21,7 @@ async function Canned() {
       <section className="space-y-4">
         <h1 className="text-xl font-semibold">Canned responses</h1>
         {responses.length === 0 ? (
-          <p className="text-sm text-neutral-500">None yet. Add your first one.</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">None yet. Add your first one.</p>
         ) : (
           <ul className="space-y-3">
             {responses.map((response) => (

@@ -52,6 +52,7 @@ export interface TeamMember {
   userId: string;
   email: string;
   role: Role;
+  isActive: boolean;
   createdAt: string;
 }
 

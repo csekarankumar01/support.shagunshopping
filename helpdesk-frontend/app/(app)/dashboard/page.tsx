@@ -7,7 +7,7 @@ import type { Stats } from '@/lib/types';
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading dashboard…</p>}>
+    <Suspense fallback={<p className="text-sm text-neutral-600 dark:text-neutral-400">Loading dashboard…</p>}>
       <Dashboard />
     </Suspense>
   );
@@ -23,8 +23,8 @@ const duration = (seconds: number | null) => {
 function Card({ label, value, href, tone = 'plain' }: { label: string; value: string | number; href?: string; tone?: 'plain' | 'danger' }) {
   const body = (
     <>
-      <span className="block text-xs text-neutral-500 uppercase">{label}</span>
-      <span className={`block text-2xl font-semibold ${tone === 'danger' && Number(value) > 0 ? 'text-red-600' : ''}`}>{value}</span>
+      <span className="block text-xs text-neutral-600 dark:text-neutral-400 uppercase">{label}</span>
+      <span className={`block text-2xl font-semibold ${tone === 'danger' && Number(value) > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{value}</span>
     </>
   );
   const box = 'rounded-md border border-neutral-200 px-4 py-3 dark:border-neutral-800';

@@ -7,7 +7,7 @@ import type { NotificationRecord } from '@/lib/types';
 
 export default function NotificationsPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-neutral-600 dark:text-neutral-400">Loading…</p>}>
       <Notifications />
     </Suspense>
   );
@@ -28,11 +28,11 @@ async function Notifications() {
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Email log</h1>
       {items.length === 0 ? (
-        <p className="text-sm text-neutral-500">No emails yet. They appear when tickets are created or breach their SLA.</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">No emails yet. They appear when tickets are created or breach their SLA.</p>
       ) : (
         <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
           <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-50 text-xs uppercase text-neutral-500 dark:bg-neutral-900">
+            <thead className="bg-neutral-50 text-xs uppercase text-neutral-600 dark:text-neutral-400 dark:bg-neutral-900">
               <tr>
                 <th className="px-4 py-2 font-medium">Type</th>
                 <th className="px-4 py-2 font-medium">To</th>
@@ -47,13 +47,13 @@ async function Notifications() {
                   <td className="px-4 py-2 whitespace-nowrap">{kindLabel[item.kind]}</td>
                   <td className="px-4 py-2 [overflow-wrap:anywhere]">{item.recipientEmail}</td>
                   <td className="px-4 py-2 [overflow-wrap:anywhere]">
-                    <Link href={`/tickets/${item.ticketId}`} className="text-blue-600 hover:underline">
+                    <Link href={`/tickets/${item.ticketId}`} className="text-blue-600 dark:text-blue-400 hover:underline">
                       {item.subject}
                     </Link>
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${statusStyle[item.status]}`}>{item.status}</span>
-                    {item.status !== 'SENT' && item.lastError && <span className="ml-2 text-xs text-neutral-500">{item.lastError}</span>}
+                    {item.status !== 'SENT' && item.lastError && <span className="ml-2 text-xs text-neutral-600 dark:text-neutral-400">{item.lastError}</span>}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap">
                     <LocalTime iso={item.createdAt} />

@@ -4,7 +4,7 @@ import { requireRole } from '@/lib/auth';
 
 export default function NewTicketPage() {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading…</p>}>
+    <Suspense fallback={<p className="text-sm text-neutral-600 dark:text-neutral-400">Loading…</p>}>
       <NewTicket />
     </Suspense>
   );

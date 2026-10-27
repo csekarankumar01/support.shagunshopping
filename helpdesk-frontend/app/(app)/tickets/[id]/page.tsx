@@ -10,7 +10,7 @@ import type { CannedResponse, TeamMember, Ticket, TicketComment } from '@/lib/ty
 
 export default function TicketPage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<p className="text-sm text-neutral-500">Loading ticket…</p>}>
+    <Suspense fallback={<p className="text-sm text-neutral-600 dark:text-neutral-400">Loading ticket…</p>}>
       <TicketDetail params={params} />
     </Suspense>
   );
@@ -40,7 +40,7 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="space-y-6">
-      <Link href="/tickets" className="text-sm text-blue-600 hover:underline">
+      <Link href="/tickets" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
         ← Back to {staff ? 'queue' : 'my tickets'}
       </Link>
 

@@ -41,6 +41,9 @@ export async function Nav() {
             </Link>
           </>
         )}
+        <Link href="/account" className={linkClass}>
+          Account
+        </Link>
         <span className="ml-auto rounded-full bg-neutral-100 px-2 py-0.5 text-xs dark:bg-neutral-800">{user.role}</span>
         <form action={logout}>
           <button type="submit" className={linkClass}>

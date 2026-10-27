@@ -8,7 +8,7 @@ export default function RegisterPage() {
       <RegisterForm />
       <p className="text-sm">
         Already registered?{' '}
-        <Link href="/login" className="text-blue-600 hover:underline">
+        <Link href="/login" className="text-blue-600 underline underline-offset-2 dark:text-blue-400">
           Sign in
         </Link>
       </p>
