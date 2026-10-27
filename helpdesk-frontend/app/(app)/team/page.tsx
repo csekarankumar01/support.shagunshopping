@@ -25,10 +25,12 @@ async function Team() {
           {members.map((member) => (
             <li key={member.userId} className="space-y-2 px-4 py-3 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <span className={`[overflow-wrap:anywhere] ${member.isActive ? '' : 'text-neutral-600 dark:text-neutral-400 line-through'}`}>{member.email}</span>
+                <span className={`[overflow-wrap:anywhere] font-medium ${member.isActive ? '' : 'text-neutral-600 dark:text-neutral-400 line-through'}`}>{member.email}</span>
                 <span className="flex shrink-0 items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400">
                   {!member.isActive && <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-800 dark:bg-red-950 dark:text-red-300">Deactivated</span>}
-                  <span className="rounded-full bg-neutral-100 px-2 py-0.5 dark:bg-neutral-800">{member.role}</span>
+                  {(member.role === 'ADMIN' || member.userId === me.userId) && (
+                    <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 font-semibold text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200">{member.role}</span>
+                  )}
                   <LocalTime iso={member.createdAt} />
                 </span>
               </div>

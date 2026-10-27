@@ -20,6 +20,10 @@ import { useHydrated } from '@/lib/use-hydrated';
 
 export const inputClass =
   'w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
+export const selectClass =
+  'w-full cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white/70 pl-3 pr-8 py-2 text-sm shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
+export const inlineSelectClass =
+  'w-auto min-w-0 max-w-full cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white/70 pl-3 pr-8 py-1.5 text-sm font-medium shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
 export const buttonClass =
   'rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg active:translate-y-px disabled:opacity-60';
 
@@ -166,7 +170,7 @@ export function NewTicketForm() {
         <input name="subject" required maxLength={200} defaultValue={state.fields?.subject} className={inputClass} />
       </Field>
       <Field label="Priority">
-        <select name="priority" defaultValue={state.fields?.priority ?? 'MEDIUM'} className={inputClass}>
+        <select name="priority" defaultValue={state.fields?.priority ?? 'MEDIUM'} className={selectClass}>
           {priorityOptions}
         </select>
       </Field>
@@ -182,7 +186,7 @@ export function StatusForm({ ticketId, current }: { ticketId: string; current: T
     <form action={action} className="flex flex-wrap items-center gap-2">
       {/* key: a new status (ours or a colleague's, pushed live) mounts a fresh select showing it. Mounting is what
           makes it survive React's reset of the form after an action; an updated select would snap back to OPEN. */}
-      <select key={current} name="status" defaultValue={current} aria-label="Status" className={`${inputClass} w-auto!`}>
+      <select key={current} name="status" defaultValue={current} aria-label="Status" className={inlineSelectClass}>
         {TICKET_STATUSES.map((s) => (
           <option key={s} value={s}>
             {s.replace('_', ' ')}
@@ -215,7 +219,7 @@ export function CommentForm({
         <select
           aria-label="Insert a canned response"
           defaultValue=""
-          className={`${inputClass} w-auto!`}
+          className={inlineSelectClass}
           onChange={(event) => {
             const chosen = canned.find((c) => c.id === event.target.value);
             if (chosen && messageRef.current) {
@@ -264,23 +268,57 @@ export function CommentForm({
 
 export function InviteForm() {
   const [state, action, pending] = useActionState(invite, {});
+  const [manualPassword, setManualPassword] = useState(false);
   return (
     <form action={action} className="space-y-4">
-      <Field label="Email">
-        <input name="email" type="email" required defaultValue={state.fields?.email} className={inputClass} />
-      </Field>
-      <Field label="Password (optional)">
-        <input name="password" type="password" minLength={8} maxLength={72} className={inputClass} autoComplete="new-password" />
-        <span className="block text-xs text-neutral-600 dark:text-neutral-400">Leave blank and they get an email with a link to choose their own.</span>
+      <Field label="Email address">
+        <input
+          name="email"
+          type="email"
+          required
+          placeholder="colleague@example.com"
+          defaultValue={state.fields?.email}
+          className={inputClass}
+          autoComplete="off"
+        />
       </Field>
       <Field label="Role">
-        <select name="role" defaultValue={state.fields?.role ?? 'AGENT'} className={inputClass}>
-          <option value="AGENT">AGENT</option>
-          <option value="CUSTOMER">CUSTOMER</option>
+        <select name="role" defaultValue={state.fields?.role ?? 'AGENT'} className={selectClass}>
+          <option value="AGENT">Support Agent</option>
+          <option value="CUSTOMER">Customer</option>
         </select>
       </Field>
+      <div className="space-y-2">
+        <label className="flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={manualPassword}
+            onChange={(e) => setManualPassword(e.target.checked)}
+            className="rounded border-slate-300 dark:border-white/20"
+          />
+          <span>Set password manually (skip invitation email)</span>
+        </label>
+        {manualPassword ? (
+          <div className="pt-1">
+            <input
+              name="password"
+              type="password"
+              required
+              minLength={8}
+              maxLength={72}
+              placeholder="Temporary password (min 8 characters)"
+              className={inputClass}
+              autoComplete="new-password"
+            />
+          </div>
+        ) : (
+          <p className="text-xs text-indigo-600 dark:text-indigo-400">
+            ✉️ An invitation email with a secure link to choose a password will be sent automatically via Resend.
+          </p>
+        )}
+      </div>
       <Feedback state={state} />
-      <SubmitButton pending={pending} idle="Invite user" busy="Inviting…" />
+      <SubmitButton pending={pending} idle="Send invitation" busy="Sending invitation…" />
     </form>
   );
 }
@@ -290,7 +328,7 @@ export function AssignForm({ ticketId, current, staff, myId }: { ticketId: strin
   return (
     <form action={action} className="flex flex-wrap items-center gap-2">
       {/* keyed on the real assignee, like the status select, so it survives React's form reset and live changes */}
-      <select key={current ?? 'none'} name="agentId" defaultValue={current ?? ''} aria-label="Assignee" className={`${inputClass} w-auto!`}>
+      <select key={current ?? 'none'} name="agentId" defaultValue={current ?? ''} aria-label="Assignee" className={inlineSelectClass}>
         <option value="">Unassigned</option>
         {staff.map((member) => (
           <option key={member.userId} value={member.userId}>
@@ -418,7 +456,7 @@ export function MemberControls({ member }: { member: TeamMember }) {
         defaultValue={member.role}
         disabled={pending || !hydrated}
         onChange={(event) => save({ role: event.target.value })}
-        className={`${inputClass} w-auto! py-1`}
+        className={`${inlineSelectClass} py-1 text-xs`}
       >
         <option value="AGENT">AGENT</option>
         <option value="CUSTOMER">CUSTOMER</option>
@@ -428,7 +466,7 @@ export function MemberControls({ member }: { member: TeamMember }) {
         disabled={pending || !hydrated}
         onClick={() => save({ isActive: !member.isActive })}
         aria-label={`${member.isActive ? 'Deactivate' : 'Reactivate'} ${member.email}`}
-        className={`text-sm hover:underline disabled:opacity-60 ${member.isActive ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}
+        className={`text-xs hover:underline disabled:opacity-60 ${member.isActive ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}
       >
         {member.isActive ? 'Deactivate' : 'Reactivate'}
       </button>

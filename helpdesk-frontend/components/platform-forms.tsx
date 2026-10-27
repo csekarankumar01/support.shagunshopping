@@ -8,7 +8,7 @@ import {
   updateOrganization,
   updatePlatformUser,
 } from '@/app/actions/platform';
-import { Feedback, Field, inputClass, SubmitButton } from '@/components/forms';
+import { Feedback, Field, inputClass, inlineSelectClass, selectClass, SubmitButton } from '@/components/forms';
 import type { FormState } from '@/lib/form-state';
 import type { PlatformOrg, PlatformUser } from '@/lib/platform';
 import { useHydrated } from '@/lib/use-hydrated';
@@ -49,7 +49,7 @@ export function OrganizationForm({ org }: { org: PlatformOrg }) {
       </Field>
       <div className="grid grid-cols-2 gap-3">
         <Field label="Plan">
-          <select name="plan" defaultValue={org.plan} className={inputClass}>
+          <select name="plan" defaultValue={org.plan} className={selectClass}>
             <option value="FREE">FREE</option>
             <option value="PRO">PRO</option>
             <option value="ENT">ENT</option>
@@ -120,7 +120,7 @@ export function UserControls({ orgId, user }: { orgId: string; user: PlatformUse
         defaultValue={user.role}
         disabled={pending || !hydrated}
         onChange={(event) => save({ role: event.target.value })}
-        className={`${inputClass} w-auto! py-1`}
+        className={`${inlineSelectClass} py-1 text-xs`}
       >
         <option value="ADMIN">ADMIN</option>
         <option value="AGENT">AGENT</option>

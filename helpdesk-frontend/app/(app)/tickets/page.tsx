@@ -64,7 +64,8 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
     return `/tickets?${next}`;
   };
   const filtered = filters.size > 0;
-  const selectClass = 'rounded-lg border border-slate-300 bg-white/70 px-2.5 py-1.5 text-sm shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
+  const selectClass =
+    'cursor-pointer appearance-none rounded-lg border border-slate-300 bg-white/70 pl-3 pr-8 py-1.5 text-sm font-medium shadow-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
 
   return (
     <div className="space-y-5">

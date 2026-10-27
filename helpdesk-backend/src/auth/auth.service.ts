@@ -369,19 +369,44 @@ export class AuthService implements OnModuleInit {
         user.id,
         INVITE_LINK_HOURS,
       );
-      void this.mailer
-        .send(
-          email,
-          'You have been invited to the help desk',
-          `You have been added as ${role === 'AGENT' ? 'an agent' : 'a customer'}.\n\n` +
-            `Choose your password here (the link works once and expires in ${INVITE_LINK_HOURS / 24} days):\n${link}\n`,
-        )
-        .catch((err: Error) =>
-          this.logger.error(`invitation email failed: ${err.message}`),
-        );
+      await this.mailer.send(
+        email,
+        'You have been invited to the help desk',
+        `You have been added as ${role === 'AGENT' ? 'an agent' : 'a customer'}.\n\n` +
+          `Choose your password here (the link works once and expires in ${INVITE_LINK_HOURS / 24} days):\n\n${link}\n\n` +
+          `If you were not expecting this, you can safely ignore this email.\n`,
+      );
       return { ...user, invitationSent: true };
     } catch (err) {
       if (isUniqueViolation(err, 'users_org_email_key')) {
+        if (!password) {
+          // Re-send invite link to existing user
+          const { rows } = await this.db.tenantQuery<{
+            id: string;
+            email: string;
+            role: Role;
+          }>(
+            orgId,
+            'SELECT id, email, role FROM users WHERE org_id = $1 AND email = $2',
+            [email],
+          );
+          const existing = rows[0];
+          if (existing) {
+            const link = await this.createResetLink(
+              orgId,
+              existing.id,
+              INVITE_LINK_HOURS,
+            );
+            await this.mailer.send(
+              email,
+              'You have been invited to the help desk',
+              `You have been added as ${existing.role === 'AGENT' ? 'an agent' : 'a customer'}.\n\n` +
+                `Choose your password here (the link works once and expires in ${INVITE_LINK_HOURS / 24} days):\n\n${link}\n\n` +
+                `If you were not expecting this, you can safely ignore this email.\n`,
+            );
+            return { ...existing, invitationSent: true };
+          }
+        }
         throw new ConflictException(
           'Email already registered in this organization',
         );
