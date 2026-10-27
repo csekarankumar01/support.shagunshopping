@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push cancels the previous run of the same branch.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (lint, build, unit and end-to-end tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: helpdesk-backend/package-lock.json
+      - name: Start Postgres, Redis, Redpanda and Mailpit
+        run: |
+          ./scripts/ci-env.sh
+          docker compose up -d postgres redis redpanda mailpit
+          ./scripts/wait-healthy.sh helpdesk-postgres helpdesk-redis helpdesk-redpanda
+      - name: Install, lint, build, test
+        working-directory: helpdesk-backend
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+          npm test
+          npm run test:e2e
+      - name: Service logs (on failure)
+        if: failure()
+        run: docker compose logs --tail 200
+
+  frontend:
+    name: Frontend (lint, type-check, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: helpdesk-frontend/package-lock.json
+      - working-directory: helpdesk-frontend
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+
+  browser-tests:
+    name: Browser tests against the full Docker stack
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - name: Build and start the whole system
+        run: |
+          ./scripts/ci-env.sh
+          docker compose up -d --build
+          ./scripts/wait-healthy.sh helpdesk-backend helpdesk-frontend helpdesk-mailpit
+      - name: Install Playwright and its browser
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: Run the browser tests
+        working-directory: e2e
+        run: npm test
+      - name: Upload the report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
+      - name: Service logs (on failure)
+        if: failure()
+        run: docker compose logs --tail 200
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Fail on high or critical vulnerabilities
+        run: |
+          for dir in helpdesk-backend helpdesk-frontend e2e; do
+            echo "== $dir"
+            (cd "$dir" && npm audit --audit-level=high)
+          done

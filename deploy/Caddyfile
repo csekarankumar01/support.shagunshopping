@@ -1,0 +1,15 @@
+# Caddy terminates HTTPS (certificates from Let's Encrypt, renewed automatically) and forwards to the containers.
+# WebSocket traffic for live chat goes through the API's host name and needs no extra settings.
+{
+	email {$ACME_EMAIL}
+}
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy frontend:4311
+}
+
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy backend:4310
+}

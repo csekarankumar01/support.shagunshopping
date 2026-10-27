@@ -1,0 +1,27 @@
+# Weekly pull requests for out-of-date dependencies and base images, so security fixes do not wait for a person to notice.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /helpdesk-backend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      nest: { patterns: ["@nestjs/*"] }
+  - package-ecosystem: npm
+    directory: /helpdesk-frontend
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 5
+    groups:
+      next: { patterns: ["next", "eslint-config-next", "react", "react-dom"] }
+  - package-ecosystem: npm
+    directory: /e2e
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /helpdesk-backend
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /helpdesk-frontend
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }

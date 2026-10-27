@@ -246,3 +246,11 @@ Against the plan's targets: ticket creation under 30 ms is met with one client (
 
 **Next:** nothing is left on the plan's ten steps. Candidates: refresh tokens + revocation, password reset, Redis adapter for several API instances, SLA timer rebuild from the database, monitoring, CI (run the tests on every push), deployment to a cloud tier (CLAUDE.md section 14).
 
+
+## Account security, browser tests, CI and deployment (built after Step 10; not yet committed)
+
+- **Frontend account features:** `/account`, `/forgot-password`, `/reset-password`, team actions, session cookie handling (`lib/cookies.ts`, `proxy.ts`), matching backend session/auth changes (`session.service.spec.ts`).
+- **Browser tests (`e2e/`, Playwright + axe):** 52 tests against the running Docker stack covering auth, roles, tenant isolation, tickets and queue, live chat, SLA breach, outbox/Kafka/SMTP, phone layout, security headers and accessibility. Last run: **52 passed** (2.7 min). Backend unit tests: 36 passed.
+- **CI:** `.github/workflows/ci.yml`, `dependabot.yml`, helper scripts in `scripts/`.
+- **Deployment:** `deploy/docker-compose.prod.yml`, `Caddyfile`, `backup.sh`, `docs/DEPLOYMENT.md`. Not deployed anywhere; nothing here is tested against a real cloud host.
+- Backend e2e (`npm run test:e2e`) was not re-run in this session.

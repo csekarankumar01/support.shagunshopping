@@ -108,11 +108,15 @@ services:
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       KAFKA_BROKERS: redpanda:9092
-      SMTP_HOST: mailpit
-      SMTP_PORT: "1025"
+      SMTP_HOST: ${SMTP_RELAY_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_RELAY_PORT:-1025}
       MAIL_FROM: ${MAIL_FROM:-helpdesk@localhost}
+      SMTP_TLS: ${SMTP_TLS:-none} # none (Mailpit, development), starttls or tls
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       FRONTEND_ORIGIN: http://localhost:${FRONTEND_PORT:-4311}
       TRUST_PROXY: "1" # the Next.js server sits in front and forwards the visitor's address
+      METRICS_TOKEN: ${METRICS_TOKEN:-} # empty = the /api/v1/metrics endpoint is switched off
     ports:
       - "${PORT:-4310}:4310"
     depends_on:
