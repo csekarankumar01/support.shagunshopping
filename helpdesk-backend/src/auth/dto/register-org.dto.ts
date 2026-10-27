@@ -1,11 +1,11 @@
 import {
-  IsEmail,
   IsNotEmpty,
   IsString,
   Length,
   Matches,
   MaxLength,
 } from 'class-validator';
+import { IsNormalizedEmail } from './email.js';
 import { IsPassword } from './password.js';
 
 export class RegisterOrgDto {
@@ -21,7 +21,7 @@ export class RegisterOrgDto {
   })
   orgSlug!: string;
 
-  @IsEmail()
+  @IsNormalizedEmail()
   email!: string;
 
   @IsPassword()
