@@ -40,7 +40,7 @@ async function TicketDetail({ params }: { params: Promise<{ id: string }> }) {
 
   return (
     <div className="space-y-6">
-      <Link href="/tickets" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+      <Link href="/tickets" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
         ← Back to {staff ? 'queue' : 'my tickets'}
       </Link>
 

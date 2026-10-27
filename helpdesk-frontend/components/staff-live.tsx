@@ -57,8 +57,8 @@ export function StaffLive() {
           onClick={() => setToasts((current) => current.filter((t) => t.key !== toast.key))}
           className={
             toast.kind === 'breached'
-              ? 'rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-lg dark:border-red-800 dark:bg-red-950 dark:text-red-100'
-              : 'rounded-md border border-blue-300 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-lg dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100'
+              ? 'rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 shadow-lg dark:border-red-800 dark:bg-red-950 dark:text-red-100'
+              : 'rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 shadow-xl dark:border-indigo-800 dark:bg-indigo-950 dark:text-indigo-100'
           }
         >
           <span className="block font-medium">

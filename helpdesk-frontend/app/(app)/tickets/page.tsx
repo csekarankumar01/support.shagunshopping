@@ -64,15 +64,15 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
     return `/tickets?${next}`;
   };
   const filtered = filters.size > 0;
-  const selectClass = 'rounded-md border border-neutral-300 bg-transparent px-2 py-1.5 text-sm dark:border-neutral-700';
+  const selectClass = 'rounded-lg border border-slate-300 bg-white/70 px-2.5 py-1.5 text-sm shadow-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
 
   return (
     <div className="space-y-5">
       {staff && <LiveRefresh />}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{staff ? 'Ticket queue' : 'My tickets'}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{staff ? 'Ticket queue' : 'My tickets'}</h1>
         {user.role === 'CUSTOMER' && (
-          <Link href="/tickets/new" className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <Link href="/tickets/new" className="rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500">
             New ticket
           </Link>
         )}
@@ -124,24 +124,24 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
             </label>
           </>
         )}
-        <button type="submit" className="rounded-md border border-neutral-300 px-3 py-1.5 text-sm dark:border-neutral-700">
+        <button type="submit" className="rounded-lg border border-slate-300 bg-white/70 px-3 py-1.5 text-sm shadow-sm transition hover:bg-white dark:border-white/15 dark:bg-white/5">
           Filter
         </button>
         {filtered && (
-          <Link href="/tickets" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+          <Link href="/tickets" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
             Clear
           </Link>
         )}
       </form>
 
       {data.items.length === 0 ? (
-        <p className="rounded-md border border-dashed border-neutral-300 px-4 py-10 text-center text-sm text-neutral-600 dark:text-neutral-400 dark:border-neutral-700">
+        <p className="rounded-2xl border border-dashed border-slate-300 px-4 py-10 text-center text-sm text-neutral-600 dark:text-neutral-400 dark:border-neutral-700">
           {filtered ? 'No tickets match these filters.' : staff ? 'The queue is empty.' : 'You have not raised any tickets yet.'}
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-neutral-200 dark:border-neutral-800">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/80 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
           <table className="w-full text-left text-sm">
-            <thead className="bg-neutral-50 text-xs uppercase text-neutral-600 dark:text-neutral-400 dark:bg-neutral-900">
+            <thead className="bg-slate-50/80 text-xs tracking-wide uppercase text-slate-500 dark:text-slate-400 dark:bg-white/5">
               <tr>
                 <th className="px-4 py-2 font-medium">Subject</th>
                 <th className="px-4 py-2 font-medium">Status</th>
@@ -151,11 +151,11 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
                 <th className="px-4 py-2 font-medium">Opened</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            <tbody className="divide-y divide-slate-100 dark:divide-white/10 [&_tr]:transition-colors [&_tr:hover]:bg-indigo-50/60 dark:[&_tr:hover]:bg-white/5">
               {data.items.map((ticket) => (
                 <tr key={ticket.id}>
                   <td className="px-4 py-2 [overflow-wrap:anywhere]">
-                    <Link href={`/tickets/${ticket.id}`} className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                    <Link href={`/tickets/${ticket.id}`} className="font-medium text-indigo-600 dark:text-indigo-400 hover:underline">
                       {ticket.subject}
                     </Link>
                   </td>
@@ -174,7 +174,7 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
                     <td className="px-4 py-2 whitespace-nowrap">
                       <LocalTime iso={ticket.slaDeadline} />
                       {ticket.slaBreachedAt && (
-                        <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Breached</span>
+                        <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white shadow-sm shadow-red-600/30">Breached</span>
                       )}
                     </td>
                   )}
@@ -195,12 +195,12 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
         </span>
         <span className="flex gap-4">
           {page > 1 && (
-            <Link href={pageHref(page - 1)} className="text-blue-600 dark:text-blue-400 hover:underline">
+            <Link href={pageHref(page - 1)} className="text-indigo-600 dark:text-indigo-400 hover:underline">
               ← Previous
             </Link>
           )}
           {page < lastPage && (
-            <Link href={pageHref(page + 1)} className="text-blue-600 dark:text-blue-400 hover:underline">
+            <Link href={pageHref(page + 1)} className="text-indigo-600 dark:text-indigo-400 hover:underline">
               Next →
             </Link>
           )}

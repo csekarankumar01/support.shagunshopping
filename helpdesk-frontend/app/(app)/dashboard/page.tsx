@@ -23,13 +23,13 @@ const duration = (seconds: number | null) => {
 function Card({ label, value, href, tone = 'plain' }: { label: string; value: string | number; href?: string; tone?: 'plain' | 'danger' }) {
   const body = (
     <>
-      <span className="block text-xs text-neutral-600 dark:text-neutral-400 uppercase">{label}</span>
-      <span className={`block text-2xl font-semibold ${tone === 'danger' && Number(value) > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{value}</span>
+      <span className="block text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">{label}</span>
+      <span className={`block mt-1 text-3xl font-semibold tracking-tight ${tone === 'danger' && Number(value) > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{value}</span>
     </>
   );
-  const box = 'rounded-md border border-neutral-200 px-4 py-3 dark:border-neutral-800';
+  const box = 'block rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-4 shadow-sm backdrop-blur transition dark:border-white/10 dark:bg-white/5';
   return href ? (
-    <Link href={href} className={`${box} hover:border-blue-500`}>
+    <Link href={href} className={`${box} hover:-translate-y-0.5 hover:border-indigo-400 hover:shadow-lg hover:shadow-indigo-500/10`}>
       {body}
     </Link>
   ) : (
@@ -44,7 +44,7 @@ async function Dashboard() {
   return (
     <div className="space-y-6">
       <LiveRefresh />
-      <h1 className="text-xl font-semibold">Dashboard</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
 
       <section aria-label="Tickets by status" className="space-y-2">
         <h2 className="text-sm font-medium text-neutral-600 dark:text-neutral-400">By status</h2>

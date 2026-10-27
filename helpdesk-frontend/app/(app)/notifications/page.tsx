@@ -47,7 +47,7 @@ async function Notifications() {
                   <td className="px-4 py-2 whitespace-nowrap">{kindLabel[item.kind]}</td>
                   <td className="px-4 py-2 [overflow-wrap:anywhere]">{item.recipientEmail}</td>
                   <td className="px-4 py-2 [overflow-wrap:anywhere]">
-                    <Link href={`/tickets/${item.ticketId}`} className="text-blue-600 dark:text-blue-400 hover:underline">
+                    <Link href={`/tickets/${item.ticketId}`} className="text-indigo-600 dark:text-indigo-400 hover:underline">
                       {item.subject}
                     </Link>
                   </td>

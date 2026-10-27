@@ -10,7 +10,7 @@ export default function ErrorPage({ error, reset }: { error: Error; reset: () =>
       </p>
       <button
         onClick={reset}
-        className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        className="rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500"
       >
         Try again
       </button>

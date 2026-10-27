@@ -31,13 +31,13 @@ export default function LoginPage({ searchParams }: { searchParams: SearchParams
       </Suspense>
       <LoginForm />
       <p className="text-sm">
-        <Link href="/forgot-password" className="text-blue-600 dark:text-blue-400 hover:underline">
+        <Link href="/forgot-password" className="text-indigo-600 dark:text-indigo-400 hover:underline">
           Forgot your password?
         </Link>
       </p>
       <p className="text-sm">
         New organisation?{' '}
-        <Link href="/register" className="text-blue-600 underline underline-offset-2 dark:text-blue-400">
+        <Link href="/register" className="text-indigo-600 underline underline-offset-2 dark:text-indigo-400">
           Create one
         </Link>
       </p>

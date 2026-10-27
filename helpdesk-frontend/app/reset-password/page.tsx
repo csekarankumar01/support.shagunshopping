@@ -25,7 +25,7 @@ async function ResetForm({ searchParams }: { searchParams: SearchParams }) {
         <p role="alert" className="text-sm text-red-700 dark:text-red-300">
           This page needs the link from your email.
         </p>
-        <Link href="/forgot-password" className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+        <Link href="/forgot-password" className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
           Request a new link
         </Link>
       </>

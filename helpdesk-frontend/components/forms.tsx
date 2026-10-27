@@ -19,9 +19,9 @@ import { useHydrated } from '@/lib/use-hydrated';
 // page's JavaScript has loaded (see SubmitButton).
 
 const inputClass =
-  'w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-neutral-700';
+  'w-full rounded-lg border border-slate-300 bg-white/70 px-3 py-2 text-sm shadow-sm outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/25 dark:border-white/15 dark:bg-white/5';
 const buttonClass =
-  'rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60';
+  'rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-indigo-600/25 transition hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg active:translate-y-px disabled:opacity-60';
 
 /**
  * Disabled until the page's JavaScript has loaded. Before that, a click would make the browser post the form
@@ -50,13 +50,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 function Feedback({ state }: { state: FormState }) {
   if (state.error)
     return (
-      <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
+      <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
         {state.error}
       </p>
     );
   if (state.ok)
     return (
-      <p role="status" className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700 dark:text-green-400 dark:bg-green-950 dark:text-green-300">
+      <p role="status" className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700 dark:text-green-400 dark:bg-green-950 dark:text-green-300">
         {state.ok}
       </p>
     );

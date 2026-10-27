@@ -208,8 +208,8 @@ export function LiveTicket({
                 key={comment.id}
                 className={
                   comment.isInternalNote
-                    ? 'rounded-md border border-amber-300 bg-amber-50 px-4 py-3 [overflow-wrap:anywhere] dark:border-amber-800 dark:bg-amber-950'
-                    : 'rounded-md border border-neutral-200 px-4 py-3 [overflow-wrap:anywhere] dark:border-neutral-800'
+                    ? 'rounded-2xl border border-dashed border-amber-400 bg-amber-50 px-4 py-3 [overflow-wrap:anywhere] dark:border-amber-800 dark:bg-amber-950'
+                    : 'rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 shadow-sm [overflow-wrap:anywhere] dark:border-white/10 dark:bg-white/5'
                 }
               >
                 <div className="mb-1 flex flex-wrap items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
