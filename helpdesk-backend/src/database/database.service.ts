@@ -37,7 +37,14 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       database: config.getOrThrow<string>('POSTGRES_DB'),
       user: config.getOrThrow<string>('APP_DB_USER'),
       password: config.getOrThrow<string>('APP_DB_PASSWORD'),
+      // Hosted databases need TLS: POSTGRES_SSL=true encrypts without checking the certificate chain, =verify checks it.
+      ssl: this.sslOption(config.get<string>('POSTGRES_SSL')),
     });
+  }
+
+  private sslOption(mode?: string) {
+    if (mode === 'verify') return true;
+    return mode === 'true' ? { rejectUnauthorized: false } : undefined;
   }
 
   async onModuleInit() {

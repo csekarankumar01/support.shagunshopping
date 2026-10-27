@@ -28,6 +28,8 @@ const client = new pg.Client({
   user: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database: process.env.POSTGRES_DB,
+  // POSTGRES_SSL=true for a hosted database (see db/migrate.mjs).
+  ssl: process.env.POSTGRES_SSL === 'verify' ? true : process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
 });
 await client.connect();
 try {

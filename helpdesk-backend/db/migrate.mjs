@@ -18,15 +18,32 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '
 const FILE_PATTERN = /^\d{3}_[a-z0-9_]+\.sql$/;
 const LOCK_KEY = 727274; // arbitrary: stops two runners migrating the same database at once
 
+// POSTGRES_SSL=true encrypts the connection without checking the server's certificate chain (what most hosted
+// databases need); POSTGRES_SSL=verify also checks it. Unset: no TLS (local Docker).
+const sslOption = () =>
+  process.env.POSTGRES_SSL === 'verify' ? true : process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
+
 const connection = (database) => ({
   host: process.env.POSTGRES_HOST ?? 'localhost',
   port: Number(process.env.POSTGRES_PORT ?? 5432),
   user: process.env.POSTGRES_USER,
   password: process.env.POSTGRES_PASSWORD,
   database,
+  ssl: sslOption(),
 });
 
 async function ensureDatabase(name) {
+  // A hosted database already exists (and its user usually cannot open the "postgres" maintenance database), so try
+  // the target first and only create it when it is missing.
+  const probe = new pg.Client(connection(name));
+  try {
+    await probe.connect();
+    return;
+  } catch (err) {
+    if (err.code !== '3D000') throw err; // anything but "database does not exist" is a real problem
+  } finally {
+    await probe.end().catch(() => {});
+  }
   const admin = new pg.Client(connection('postgres'));
   await admin.connect();
   try {
@@ -34,6 +51,25 @@ async function ensureDatabase(name) {
     if (!rowCount) await admin.query(`CREATE DATABASE ${admin.escapeIdentifier(name)}`);
   } finally {
     await admin.end();
+  }
+}
+
+/**
+ * Migration 006 creates the restricted role the app connects as. On a hosted database the migrating user may not be
+ * allowed to create roles; say so plainly, with the one command that fixes it, instead of failing inside a migration.
+ */
+async function ensureAppRole(client) {
+  const { rowCount } = await client.query("SELECT 1 FROM pg_roles WHERE rolname = 'helpdesk_app'");
+  if (rowCount) return;
+  const { rows } = await client.query(
+    'SELECT rolcreaterole OR rolsuper AS allowed FROM pg_roles WHERE rolname = current_user',
+  );
+  if (!rows[0]?.allowed) {
+    throw new Error(
+      'The database user may not create roles, and the role "helpdesk_app" does not exist yet. ' +
+        'Ask whoever owns the database to run once:  CREATE ROLE helpdesk_app NOLOGIN;  ' +
+        '(or use a Postgres host that allows CREATE ROLE), then run the migrations again.',
+    );
   }
 }
 
@@ -59,6 +95,7 @@ export async function migrate({ database = process.env.POSTGRES_DB, baseline, lo
   const result = { database, applied: [], baselined: [] };
   try {
     await client.query('SELECT pg_advisory_lock($1)', [LOCK_KEY]);
+    await ensureAppRole(client);
     await client.query(`CREATE TABLE IF NOT EXISTS schema_migrations (
       filename   TEXT PRIMARY KEY,
       checksum   TEXT NOT NULL,

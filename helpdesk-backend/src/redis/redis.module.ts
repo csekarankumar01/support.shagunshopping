@@ -19,14 +19,22 @@ export const REDIS = Symbol('REDIS');
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
         const logger = new Logger('Redis');
-        const client = new Redis({
-          host: config.getOrThrow<string>('REDIS_HOST'),
-          port: Number(config.getOrThrow<string>('REDIS_PORT')),
-          password: config.getOrThrow<string>('REDIS_PASSWORD'),
+        const options = {
           maxRetriesPerRequest: 2,
           // Optional namespace for every key (tests use "test:" so they never touch the real keys).
           keyPrefix: config.get<string>('REDIS_KEY_PREFIX', ''),
-        });
+        };
+        // REDIS_URL (redis:// or rediss:// for TLS, password inside) is what hosted Redis gives you; otherwise the
+        // separate host, port and password of the local Docker setup.
+        const url = config.get<string>('REDIS_URL');
+        const client = url
+          ? new Redis(url, options)
+          : new Redis({
+              host: config.getOrThrow<string>('REDIS_HOST'),
+              port: Number(config.getOrThrow<string>('REDIS_PORT')),
+              password: config.getOrThrow<string>('REDIS_PASSWORD'),
+              ...options,
+            });
         client.on('error', (err) =>
           logger.warn(`connection problem: ${err.message}`),
         );
