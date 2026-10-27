@@ -639,7 +639,7 @@ describe('sessions, revocation, password flows and member management', () => {
       sockets.push(retry);
       await expect(
         new Promise((resolve, reject) => {
-          retry.once('connect', resolve);
+          retry.once('connect', () => resolve(undefined));
           retry.once('connect_error', reject);
         }),
       ).rejects.toThrow('unauthorized');

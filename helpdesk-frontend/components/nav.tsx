@@ -42,6 +42,9 @@ export async function Nav() {
             <NavLink href="/notifications">
               Emails
             </NavLink>
+            <NavLink href="/failed-events">
+              Failed events
+            </NavLink>
           </>
         )}
         <NavLink href="/account">

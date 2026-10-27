@@ -12,6 +12,7 @@ import {
   stringDeserializers,
   stringSerializers,
 } from '@platformatic/kafka';
+import { DatabaseService } from '../database/database.service.js';
 import { MetricsService } from '../metrics/metrics.service.js';
 import { TOPICS } from './events.js';
 import type { EventEnvelope, Topic } from './events.js';
@@ -51,6 +52,7 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
   constructor(
     config: ConfigService,
     private readonly metrics: MetricsService,
+    private readonly db: DatabaseService,
   ) {
     this.enabled = config.get<string>('EVENTS_ENABLED', 'true') !== 'false';
     this.brokers = config
@@ -197,11 +199,13 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
       return this.deadLetter(topic, raw);
     }
     for (let attempt = 1; ; attempt++) {
+      let failure: Error;
       try {
         await handler(event);
         this.metrics.eventsConsumed.inc({ consumer: name, outcome: 'ok' });
         return;
       } catch (err) {
+        failure = err as Error;
         this.logger.warn(
           `[${name}] ${event.type} ${event.id} failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${(err as Error).message}`,
         );
@@ -211,19 +215,61 @@ export class KafkaService implements OnModuleInit, OnApplicationShutdown {
             outcome: 'dead_letter',
           });
           this.logger.error(`[${name}] giving up on ${event.id}; sent to DLQ`);
-          return this.deadLetter(topic, raw, event.orgId);
+          return this.deadLetter(topic, raw, event.orgId, {
+            consumer: name,
+            event,
+            error: failure.message,
+            attempts: attempt,
+          });
         }
         await sleep(500 * 2 ** (attempt - 1));
       }
     }
   }
 
-  private async deadLetter(topic: string, raw: string, key = 'unknown') {
+  private async deadLetter(
+    topic: string,
+    raw: string,
+    key = 'unknown',
+    failed?: {
+      consumer: string;
+      event: EventEnvelope;
+      error: string;
+      attempts: number;
+    },
+  ) {
     try {
       await this.send([{ topic: `${topic}.dlq`, key, value: raw }]);
     } catch (err) {
       this.logger.error(
         `could not write to ${topic}.dlq: ${(err as Error).message}`,
+      );
+    }
+    if (failed) await this.recordDeadLetter(topic, raw, failed);
+  }
+
+  /** Keeps a readable copy for the organisation's admin. Best effort: a failure here must not stop the consumer. */
+  private async recordDeadLetter(
+    topic: string,
+    raw: string,
+    { consumer, event, error, attempts }: {
+      consumer: string;
+      event: EventEnvelope;
+      error: string;
+      attempts: number;
+    },
+  ) {
+    try {
+      await this.db.tenantQuery(
+        event.orgId,
+        `INSERT INTO dead_letters (org_id, consumer, topic, event_id, event_type, error, attempts, payload)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (consumer, event_id) DO NOTHING`,
+        [consumer, topic, event.id, event.type, error.slice(0, 1000), attempts, raw],
+      );
+    } catch (err) {
+      this.logger.error(
+        `could not record dead letter ${event.id}: ${(err as Error).message}`,
       );
     }
   }

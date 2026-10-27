@@ -100,7 +100,7 @@ describe('several API instances, SLA timer recovery, metrics and security header
   afterAll(async () => {
     await redis.zrem(
       SLA_KEY,
-      ...(await redis.zrange(SLA_KEY, 0, -1)).filter((m) =>
+      ...(await redis.zrange(SLA_KEY, '0', '-1')).filter((m) =>
         m.startsWith(t.orgId),
       ),
     );

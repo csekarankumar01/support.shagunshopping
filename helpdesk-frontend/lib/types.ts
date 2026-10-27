@@ -93,3 +93,14 @@ export interface NotificationRecord {
   createdAt: string;
   sentAt: string | null;
 }
+
+export interface DeadLetterRecord {
+  id: string;
+  consumer: string;
+  topic: string;
+  eventId: string;
+  eventType: string;
+  error: string;
+  attempts: number;
+  createdAt: string;
+}

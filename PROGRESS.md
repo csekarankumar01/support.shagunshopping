@@ -265,3 +265,9 @@ Against the plan's targets: ticket creation under 30 ms is met with one client (
 - Note: the earlier "Known limits" list is partly outdated: refresh tokens, revocation, password reset and the Redis Socket.io adapter now exist.
 
 **Next:** email verification, then cloud deployment (needs Render or Railway and Vercel accounts).
+
+## Leftovers cleared (2026-10-27)
+
+- The three type errors in backend test files are fixed (`tsc --noEmit` is clean).
+- **Failed events page:** when a consumer gives up on an event after its retries, a readable copy is saved in `dead_letters` (migrations 014 and 015, RLS, admin-only `GET /api/v1/dead-letters`) as well as going to the `<topic>.dlq` Kafka topic. Admins see it at `/failed-events`. Unreadable messages with no org id stay only on the Kafka DLQ topic. Covered by the existing e2e "retries a failing email" test (extended). Backend: 38 unit + 132 e2e passing. The Playwright suite was not re-run after this change.
+- Still open: email verification at registration, the push to the `csekarankumar01` account, deployment.

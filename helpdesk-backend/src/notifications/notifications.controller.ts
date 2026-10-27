@@ -27,8 +27,27 @@ export class NotificationsController {
   }
 }
 
+/** Events this organisation's consumers gave up on after retrying (the admin's "failed events" list). */
+@Controller('api/v1/dead-letters')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
+export class DeadLettersController {
+  constructor(private readonly db: DatabaseService) {}
+
+  @Get()
+  async list(@CurrentUser() user: AuthenticatedUser) {
+    const { rows } = await this.db.tenantQuery(
+      user.orgId,
+      `SELECT id, consumer, topic, event_id AS "eventId", event_type AS "eventType", error, attempts,
+              created_at AS "createdAt"
+         FROM dead_letters WHERE org_id = $1 ORDER BY created_at DESC LIMIT 100`,
+    );
+    return rows;
+  }
+}
+
 @Module({
   imports: [AuthModule, DatabaseModule],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, DeadLettersController],
 })
 export class NotificationsModule {}

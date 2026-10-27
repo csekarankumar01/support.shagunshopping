@@ -346,6 +346,23 @@ describe('events: outbox, Kafka, notifications, audit and the SLA engine', () =>
         30_000,
       );
       expect((await notification(ticket.id))[0].attempts).toBe(4);
+      // The give-up is also kept where the organisation's admin can see it (and only that admin).
+      await until(
+        async () =>
+          (
+            await query(
+              `SELECT 1 FROM dead_letters WHERE org_id = $1 AND consumer = 'notifications' AND error = 'smtp down'`,
+              [a.orgId],
+            )
+          ).length > 0,
+      );
+      const seen = await http(app)
+        .get('/api/v1/dead-letters')
+        .set(auth(a.admin));
+      expect(seen.status).toBe(200);
+      expect(seen.body[0]).toMatchObject({ consumer: 'notifications', error: 'smtp down' });
+      expect((await http(app).get('/api/v1/dead-letters').set(auth(a.cust1))).status).toBe(403);
+      expect((await http(app).get('/api/v1/dead-letters').set(auth(s.admin))).body).toEqual([]);
       // The audit and SLA consumers are separate groups: this failure did not hold them up.
       await until(
         async () =>
