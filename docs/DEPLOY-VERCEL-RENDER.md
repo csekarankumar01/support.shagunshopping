@@ -9,7 +9,7 @@ super admin all work; automatic ticket receipts and SLA breach alerts need Kafka
 
 ## 1. Render: database and Redis (same region as the API)
 
-- **PostgreSQL** (New > PostgreSQL). Note the *internal* connection details: host, port, database, user, password.
+- **PostgreSQL** (New > PostgreSQL). Copy its *Internal Database URL*.
   The migration creates a restricted role (`helpdesk_app`) that the app runs as, so the database user must be allowed to
   create roles. If the first deploy stops with "may not create roles", run `CREATE ROLE helpdesk_app NOLOGIN;` once as
   the database owner (Render's database page has a shell/connection string) and redeploy, or use another Postgres host.
@@ -32,11 +32,7 @@ Do **not** set `PORT`: Render provides it and the API reads it.
 
 | Variable | Value | Notes |
 |---|---|---|
-| `POSTGRES_HOST` | internal host of the Render database | |
-| `POSTGRES_PORT` | `5432` | |
-| `POSTGRES_DB` | the database name | |
-| `POSTGRES_USER` | the database user | the owner: used only by the pre-deploy migration |
-| `POSTGRES_PASSWORD` | the database password | |
+| `DATABASE_URL` | the Render database's **Internal Database URL** | one value, copied whole (`postgresql://user:password@host/db`). It names the server and database and is used by the pre-deploy migration as the owner; the API itself then connects as `helpdesk_app` using `APP_DB_PASSWORD`. If it is missing, the deploy fails with "Cannot tell which database to use" |
 | `POSTGRES_SSL` | `true` | if the log says the server does not support SSL, set `false` |
 | `APP_DB_USER` | `helpdesk_app` | the restricted role the API runs as |
 | `APP_DB_PASSWORD` | a NEW long random password | `openssl rand -hex 24`; the migration sets the role's password to this |
@@ -89,7 +85,7 @@ Run from your machine against the Render database (use its *external* connection
 from `helpdesk-backend/`, passing the values on the command line so nothing is saved to a file:
 
 ```bash
-POSTGRES_HOST=... POSTGRES_PORT=5432 POSTGRES_DB=... POSTGRES_USER=... POSTGRES_PASSWORD=... POSTGRES_SSL=true \
+DATABASE_URL='<External Database URL>' POSTGRES_SSL=true \
   JWT_SECRET=<the same JWT_SECRET as Render> node db/create-platform-admin.mjs you@example.com
 # then two-factor (needs `npm run build` first because it reuses the API's code):
   ... node db/platform-2fa.mjs you@example.com

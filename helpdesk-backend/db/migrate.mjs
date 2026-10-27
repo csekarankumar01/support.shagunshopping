@@ -13,29 +13,17 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import pg from 'pg';
+import { ownerConnection, usesUrl } from './connection.mjs';
 
 const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 const FILE_PATTERN = /^\d{3}_[a-z0-9_]+\.sql$/;
 const LOCK_KEY = 727274; // arbitrary: stops two runners migrating the same database at once
 
-// POSTGRES_SSL=true encrypts the connection without checking the server's certificate chain (what most hosted
-// databases need); POSTGRES_SSL=verify also checks it. Unset: no TLS (local Docker).
-const sslOption = () =>
-  process.env.POSTGRES_SSL === 'verify' ? true : process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
-
-const connection = (database) => ({
-  host: process.env.POSTGRES_HOST ?? 'localhost',
-  port: Number(process.env.POSTGRES_PORT ?? 5432),
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database,
-  ssl: sslOption(),
-});
-
 async function ensureDatabase(name) {
+  if (usesUrl()) return; // a hosted database named by DATABASE_URL already exists
   // A hosted database already exists (and its user usually cannot open the "postgres" maintenance database), so try
   // the target first and only create it when it is missing.
-  const probe = new pg.Client(connection(name));
+  const probe = new pg.Client(ownerConnection(name));
   try {
     await probe.connect();
     return;
@@ -44,7 +32,7 @@ async function ensureDatabase(name) {
   } finally {
     await probe.end().catch(() => {});
   }
-  const admin = new pg.Client(connection('postgres'));
+  const admin = new pg.Client(ownerConnection('postgres'));
   await admin.connect();
   try {
     const { rowCount } = await admin.query('SELECT 1 FROM pg_database WHERE datname = $1', [name]);
@@ -90,7 +78,7 @@ export async function migrate({ database = process.env.POSTGRES_DB, baseline, lo
   const files = readdirSync(MIGRATIONS_DIR).filter((f) => FILE_PATTERN.test(f)).sort();
   await ensureDatabase(database);
 
-  const client = new pg.Client(connection(database));
+  const client = new pg.Client(ownerConnection(database));
   await client.connect();
   const result = { database, applied: [], baselined: [] };
   try {
@@ -134,7 +122,7 @@ export async function migrate({ database = process.env.POSTGRES_DB, baseline, lo
       result.applied.push(file);
       log(`applied    ${file}`);
     }
-    if (!result.applied.length && !result.baselined.length) log(`"${database}" is up to date`);
+    if (!result.applied.length && !result.baselined.length) log(`"${database ?? "the database"}" is up to date`);
     await syncAppRolePassword(client, log);
   } finally {
     await client.query('SELECT pg_advisory_unlock($1)', [LOCK_KEY]).catch(() => {});

@@ -7,6 +7,7 @@
 import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcrypt';
 import pg from 'pg';
+import { ownerConnection } from './connection.mjs';
 
 const email = (process.argv[2] ?? '').trim().toLowerCase();
 if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -23,15 +24,7 @@ const generated = supplied === undefined;
 const password = supplied ?? randomBytes(15).toString('base64url');
 const hash = await bcrypt.hash(password, 12);
 
-const client = new pg.Client({
-  host: process.env.POSTGRES_HOST ?? 'localhost',
-  port: Number(process.env.POSTGRES_PORT ?? 5432),
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
-  // POSTGRES_SSL=true for a hosted database (see db/migrate.mjs).
-  ssl: process.env.POSTGRES_SSL === 'verify' ? true : process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
-});
+const client = new pg.Client(ownerConnection());
 await client.connect();
 try {
   const { rows } = await client.query(

@@ -31,10 +31,25 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
 
   constructor(config: ConfigService) {
     // The app connects as a restricted role (not the owner), so Row-Level Security always applies to it.
+    // DATABASE_URL (one value, as hosted databases give it) names the server and database; the user and password in
+    // it are the OWNER's and are replaced by the restricted role's. Otherwise the separate POSTGRES_* settings.
+    const url = config.get<string>('DATABASE_URL');
+    const target = url
+      ? (() => {
+          const parsed = new URL(url);
+          return {
+            host: parsed.hostname,
+            port: Number(parsed.port || 5432),
+            database: decodeURIComponent(parsed.pathname.slice(1)),
+          };
+        })()
+      : {
+          host: config.getOrThrow<string>('POSTGRES_HOST'),
+          port: Number(config.getOrThrow<string>('POSTGRES_PORT')),
+          database: config.getOrThrow<string>('POSTGRES_DB'),
+        };
     this.pool = new Pool({
-      host: config.getOrThrow<string>('POSTGRES_HOST'),
-      port: Number(config.getOrThrow<string>('POSTGRES_PORT')),
-      database: config.getOrThrow<string>('POSTGRES_DB'),
+      ...target,
       user: config.getOrThrow<string>('APP_DB_USER'),
       password: config.getOrThrow<string>('APP_DB_PASSWORD'),
       // Hosted databases need TLS: POSTGRES_SSL=true encrypts without checking the certificate chain, =verify checks it.

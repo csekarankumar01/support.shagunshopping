@@ -7,6 +7,7 @@
 // turns on after you type a valid code from your app.
 import { createInterface } from 'node:readline/promises';
 import pg from 'pg';
+import { ownerConnection } from './connection.mjs';
 // The same code the API uses (built by `nest build`, which the npm script runs first).
 import { encryptSecret, generateSecret, otpauthUrl, verifyCode } from '../dist/platform/totp.js';
 
@@ -22,15 +23,7 @@ if (!appSecret) {
   process.exit(1);
 }
 
-const client = new pg.Client({
-  host: process.env.POSTGRES_HOST ?? 'localhost',
-  port: Number(process.env.POSTGRES_PORT ?? 5432),
-  user: process.env.POSTGRES_USER,
-  password: process.env.POSTGRES_PASSWORD,
-  database: process.env.POSTGRES_DB,
-  // POSTGRES_SSL=true for a hosted database (see db/migrate.mjs).
-  ssl: process.env.POSTGRES_SSL === 'verify' ? true : process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
-});
+const client = new pg.Client(ownerConnection());
 await client.connect();
 try {
   const found = await client.query('SELECT id FROM platform_admins WHERE email = $1', [email]);
