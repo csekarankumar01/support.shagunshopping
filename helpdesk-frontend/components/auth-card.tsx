@@ -9,8 +9,8 @@ export function AuthCard({ title, children }: { title: string; children: ReactNo
         <div className="absolute -top-24 -right-24 h-80 w-80 rounded-full bg-white/10 blur-2xl" aria-hidden />
         <div className="absolute -bottom-32 -left-16 h-96 w-96 rounded-full bg-white/10 blur-3xl" aria-hidden />
         <div className="relative flex items-center gap-2 text-lg font-semibold">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/20 text-base backdrop-blur">H</span>
-          Helpdesk
+          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/20 text-base font-bold backdrop-blur">F</span>
+          Flash HelpDesk
         </div>
         <div className="relative space-y-6">
           <h2 className="text-4xl leading-tight font-semibold">Support that keeps its promises.</h2>

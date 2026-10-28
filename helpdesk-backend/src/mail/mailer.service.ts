@@ -42,10 +42,10 @@ export class MailerService {
 
     if (resendApiKey) {
       this.resend = new Resend(resendApiKey);
-      this.from = config.get<string>('MAIL_FROM', 'onboarding@resend.dev');
+      this.from = config.get<string>('MAIL_FROM', 'Flash HelpDesk <onboarding@resend.dev>');
       this.logger.log('Mailer initialized with Resend API');
     } else {
-      this.from = config.get<string>('MAIL_FROM', 'helpdesk@localhost');
+      this.from = config.get<string>('MAIL_FROM', 'Flash HelpDesk <helpdesk@localhost>');
       this.logger.log('Mailer initialized with SMTP transport');
     }
   }

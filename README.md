@@ -1,4 +1,4 @@
-# Real-Time Multi-Tenant Helpdesk SaaS
+# Flash HelpDesk — Real-Time Multi-Tenant Support SaaS
 
 A production-style customer support and ticketing platform in the spirit of Zendesk and Freshdesk. Many client
 organisations ("tenants") share one deployment, each with a fully isolated workspace. Customers raise tickets and

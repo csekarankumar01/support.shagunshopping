@@ -5,8 +5,11 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Helpdesk",
-  description: "Multi-tenant helpdesk: customer portal and agent queue",
+  title: {
+    default: "Flash HelpDesk",
+    template: "%s · Flash HelpDesk",
+  },
+  description: "Flash HelpDesk - Real-time multi-tenant customer support and ticketing platform",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

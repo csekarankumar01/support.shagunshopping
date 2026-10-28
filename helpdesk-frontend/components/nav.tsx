@@ -14,8 +14,10 @@ export async function Nav() {
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/75 backdrop-blur-lg dark:border-white/10 dark:bg-[#0b1020]/70">
       <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-1 gap-y-2 px-4 py-2.5">
         <span className="mr-3 flex items-center gap-2 font-semibold tracking-tight">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-sm text-white shadow-md shadow-indigo-600/30">H</span>
-          Helpdesk
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500 text-sm font-bold text-white shadow-md shadow-indigo-600/30">
+            F
+          </span>
+          Flash HelpDesk
         </span>
         {staff && (
           <NavLink href="/dashboard">
@@ -73,8 +75,10 @@ export function NavFallback() {
     <header className="border-b border-slate-200/70 bg-white/75 backdrop-blur-lg dark:border-white/10 dark:bg-[#0b1020]/70">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5 font-semibold">
         <span className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 to-violet-600 text-sm text-white shadow-md shadow-indigo-600/30">H</span>
-          Helpdesk
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500 text-sm font-bold text-white shadow-md shadow-indigo-600/30">
+            F
+          </span>
+          Flash HelpDesk
         </span>
         <ThemeToggle />
       </div>

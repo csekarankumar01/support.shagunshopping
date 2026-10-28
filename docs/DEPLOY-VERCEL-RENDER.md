@@ -40,7 +40,7 @@ Do **not** set `PORT`: Render provides it and the API reads it.
 | `JWT_SECRET` | a NEW long random string | `openssl rand -hex 48`; also protects verification codes and 2FA secrets, so never reuse or lose it |
 | `JWT_EXPIRES_IN_SECONDS` | `900` | |
 | `REDIS_URL` | the Key Value internal URL | |
-| `FRONTEND_ORIGIN` | `https://YOUR-APP.vercel.app` | set after step 3; no trailing slash; comma-separate to allow more |
+| `FRONTEND_ORIGIN` | `https://flash-helpdesk.vercel.app` | set to your Vercel domain; no trailing slash; comma-separate to allow more (e.g. `https://flash-helpdesk.vercel.app,http://localhost:4311`) |
 | `TRUST_PROXY` | `2` | Vercel then Render each add a hop; check rate limits count real visitors |
 | `EVENTS_ENABLED` | `false` | until a Kafka service is set up |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | sign-up needs the emailed code |
@@ -50,7 +50,7 @@ Do **not** set `PORT`: Render provides it and the API reads it.
 | `SMTP_TLS` | `tls` | |
 | `SMTP_USER` | `resend` | |
 | `SMTP_PASSWORD` | your Resend API key | use a "Sending access" key; a full-access key was shared in chat, replace it |
-| `MAIL_FROM` | `Helpdesk <no-reply@yourdomain.com>` | must be on a domain verified in Resend; until then `onboarding@resend.dev`, which only reaches your own Resend email |
+| `MAIL_FROM` | `Flash HelpDesk <no-reply@yourdomain.com>` | must be on a domain verified in Resend; until then `Flash HelpDesk <onboarding@resend.dev>`, which only reaches your own Resend email |
 | `PLATFORM_REQUIRE_2FA` | `false` at first, `true` after you set up 2FA | see "First super admin" |
 | `METRICS_TOKEN` | optional long random string | protects `/metrics` |
 
@@ -76,8 +76,8 @@ That is all the frontend needs. Set both **before** the first deploy.
 
 ## 4. Close the loop
 
-1. Copy the Vercel address (e.g. `https://helpdesk-xyz.vercel.app`; use the stable production domain, not a preview URL).
-2. In Render set `FRONTEND_ORIGIN` to it and let the API redeploy. Without this, live chat is refused (the API only
+1. Copy the Vercel address: `https://flash-helpdesk.vercel.app` (use your stable production domain, not a preview URL).
+2. In Render set `FRONTEND_ORIGIN` to `https://flash-helpdesk.vercel.app` and let the API redeploy. Without this, live chat is refused (the API only
    accepts WebSocket connections from that origin) and password-reset/invitation links point at the wrong place.
 
 ## First super admin (once)
@@ -92,7 +92,7 @@ DATABASE_URL='<External Database URL>' POSTGRES_SSL=true \
   ... node db/platform-2fa.mjs you@example.com
 ```
 
-Then set `PLATFORM_REQUIRE_2FA=true` on Render. The console is at `https://YOUR-APP.vercel.app/platform/login`.
+Then set `PLATFORM_REQUIRE_2FA=true` on Render. The console is at `https://flash-helpdesk.vercel.app/platform/login`.
 (The Render database must allow connections from your IP, or use Render's shell if your plan has one.)
 
 ## Checklist after deploying
