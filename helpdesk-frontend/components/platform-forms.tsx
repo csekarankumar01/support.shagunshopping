@@ -73,13 +73,15 @@ export function SuspendControls({ org }: { org: PlatformOrg }) {
   const hydrated = useHydrated();
   if (org.status === 'SUSPENDED') {
     return (
-      <div className="space-y-2">
-        <p className="text-sm text-red-700 dark:text-red-300">Suspended: {org.suspendedReason ?? 'no reason recorded'}</p>
+      <div className="space-y-3">
+        <p className="text-xs font-medium text-rose-700 dark:text-rose-300">
+          Suspended: {org.suspendedReason ?? 'no reason recorded'}
+        </p>
         <button
           type="button"
           disabled={busy || !hydrated}
           onClick={() => startTransition(async () => setMessage(await activateOrganization(org.id)))}
-          className="rounded-lg border border-green-600 px-4 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50 disabled:opacity-60 dark:text-green-300 dark:hover:bg-green-950"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-600/40 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-950/60"
         >
           Reactivate organisation
         </button>
@@ -91,14 +93,14 @@ export function SuspendControls({ org }: { org: PlatformOrg }) {
   return (
     <form action={action} className="space-y-3">
       <Field label="Reason for suspending (kept in the audit log)">
-        <input name="reason" required maxLength={500} className={inputClass} />
+        <input name="reason" required maxLength={500} className={inputClass} placeholder="Violation of Terms, abuse, payment delinquency..." />
       </Field>
       <Feedback state={state} />
       {message.ok && <Feedback state={{ ok: message.ok }} />}
       <button
         type="submit"
         disabled={pending || !hydrated}
-        className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-md shadow-red-600/25 transition hover:bg-red-500 disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-rose-600/25 transition hover:from-rose-500 hover:to-red-500 disabled:opacity-60"
       >
         {pending ? 'Suspending…' : 'Suspend organisation'}
       </button>
@@ -120,7 +122,7 @@ export function UserControls({ orgId, user }: { orgId: string; user: PlatformUse
         defaultValue={user.role}
         disabled={pending || !hydrated}
         onChange={(event) => save({ role: event.target.value })}
-        className={`${inlineSelectClass} py-1 text-xs`}
+        className={`${inlineSelectClass} py-1 text-xs rounded-lg border border-slate-300 dark:border-white/10 bg-white/70 dark:bg-white/5 font-medium`}
       >
         <option value="ADMIN">ADMIN</option>
         <option value="AGENT">AGENT</option>
@@ -131,12 +133,16 @@ export function UserControls({ orgId, user }: { orgId: string; user: PlatformUse
         disabled={pending || !hydrated}
         onClick={() => save({ isActive: !user.isActive })}
         aria-label={`${user.isActive ? 'Deactivate' : 'Reactivate'} ${user.email}`}
-        className={`text-sm hover:underline disabled:opacity-60 ${user.isActive ? 'text-red-600 dark:text-red-400' : 'text-green-700 dark:text-green-400'}`}
+        className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition disabled:opacity-60 ${
+          user.isActive
+            ? 'text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40'
+            : 'text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/40'
+        }`}
       >
         {user.isActive ? 'Deactivate' : 'Reactivate'}
       </button>
       {message.error && (
-        <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <span role="alert" className="text-xs text-rose-600 dark:text-rose-400 font-medium">
           {message.error}
         </span>
       )}

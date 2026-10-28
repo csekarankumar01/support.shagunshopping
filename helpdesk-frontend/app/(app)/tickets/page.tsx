@@ -269,7 +269,7 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
                           {people.get(ticket.agentId) ?? 'Unknown'}
                         </span>
                       ) : (
-                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-white/10 dark:text-slate-400">
+                        <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-white/10 dark:text-slate-300">
                           Unassigned
                         </span>
                       )}

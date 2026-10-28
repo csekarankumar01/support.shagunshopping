@@ -100,7 +100,7 @@ export async function invite(_prev: FormState, data: FormData): Promise<FormStat
     return {
       ok: password
         ? `Invited ${email} as ${role}.`
-        : `Invited ${email} as ${role}. An invitation email with a link to choose a password was sent via Resend.`,
+        : `Invited ${email} as ${role}. They have been emailed a link to choose a password.`,
     };
   } catch (err) {
     if (err instanceof ApiError) return { error: err.message, fields: { email, role } };

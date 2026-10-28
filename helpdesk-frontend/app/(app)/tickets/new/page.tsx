@@ -38,7 +38,7 @@ async function NewTicket() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">New ticket</h1>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Submit a support request to our engineering team. All tickets are tracked in real time against strict SLA deadlines.
+            Submit a support request to our engineering team. All tickets are tracked in real time.
           </p>
         </div>
 

@@ -271,7 +271,7 @@ export function InviteForm() {
   const [manualPassword, setManualPassword] = useState(false);
   return (
     <form action={action} className="space-y-4">
-      <Field label="Email address">
+      <Field label="Email">
         <input
           name="email"
           type="email"
@@ -318,7 +318,7 @@ export function InviteForm() {
         )}
       </div>
       <Feedback state={state} />
-      <SubmitButton pending={pending} idle="Send invitation" busy="Sending invitation…" />
+      <SubmitButton pending={pending} idle="Invite user" busy="Inviting…" />
     </form>
   );
 }

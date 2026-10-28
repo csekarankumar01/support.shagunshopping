@@ -24,33 +24,34 @@ export class MailerService {
   constructor(config: ConfigService) {
     const resendApiKey = config.get<string>('RESEND_API_KEY')?.trim();
 
+    const mode = config.get<string>('SMTP_TLS', 'none') as TlsMode;
+    if (!['none', 'starttls', 'tls'].includes(mode)) {
+      throw new Error(`SMTP_TLS must be none, starttls or tls (got "${mode}")`);
+    }
+    const user = config.get<string>('SMTP_USER');
+    this.transport = createTransport({
+      host: config.get<string>('SMTP_HOST', 'localhost'),
+      port: Number(config.get<string>('SMTP_PORT', '4025')),
+      secure: mode === 'tls',
+      ignoreTLS: mode === 'none',
+      requireTLS: mode === 'starttls', // never fall back to sending credentials and mail unencrypted
+      auth: user ? { user, pass: config.get<string>('SMTP_PASSWORD', '') } : undefined,
+      connectionTimeout: 5000,
+      socketTimeout: 10_000,
+    });
+
     if (resendApiKey) {
       this.resend = new Resend(resendApiKey);
       this.from = config.get<string>('MAIL_FROM', 'onboarding@resend.dev');
       this.logger.log('Mailer initialized with Resend API');
     } else {
       this.from = config.get<string>('MAIL_FROM', 'helpdesk@localhost');
-      const mode = config.get<string>('SMTP_TLS', 'none') as TlsMode;
-      if (!['none', 'starttls', 'tls'].includes(mode)) {
-        throw new Error(`SMTP_TLS must be none, starttls or tls (got "${mode}")`);
-      }
-      const user = config.get<string>('SMTP_USER');
-      this.transport = createTransport({
-        host: config.get<string>('SMTP_HOST', 'localhost'),
-        port: Number(config.get<string>('SMTP_PORT', '4025')),
-        secure: mode === 'tls',
-        ignoreTLS: mode === 'none',
-        requireTLS: mode === 'starttls', // never fall back to sending credentials and mail unencrypted
-        auth: user ? { user, pass: config.get<string>('SMTP_PASSWORD', '') } : undefined,
-        connectionTimeout: 5000,
-        socketTimeout: 10_000,
-      });
       this.logger.log('Mailer initialized with SMTP transport');
     }
   }
 
   async send(to: string, subject: string, text: string, html?: string) {
-    if (this.resend) {
+    if (this.resend && !to.endsWith('.test') && process.env.NODE_ENV !== 'test') {
       const { data, error } = await this.resend.emails.send({
         from: this.from,
         to,
