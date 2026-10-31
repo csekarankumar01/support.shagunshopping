@@ -1,11 +1,10 @@
-# Flash HelpDesk — Real-Time Multi-Tenant Support SaaS
+# Shagun Care — Dedicated Customer Support & Resolution Desk
 
-A production-style customer support and ticketing platform in the spirit of Zendesk and Freshdesk. Many client
-organisations ("tenants") share one deployment, each with a fully isolated workspace. Customers raise tickets and
-chat live with agents, agents leave private internal notes, and every organisation has an SLA whose breach triggers
-automatic escalation and alerts.
+Official customer care and resolution platform specifically tailored for **Shagun Shopping** (`shagunshopping.com`), Meerut's trusted cosmetic destination for 25+ years. Features single-brand auth (no tenant slug needed), e-commerce issue presets (damaged items, delivery delays, return requests), real-time beauty advisor chat, and SLA-backed escalation.
 
-**Built by Karan Kumar** as a deep, hands-on project in NestJS, PostgreSQL, Redis, Kafka and Docker.
+- **Frontend:** Runs on port `5311` (`http://localhost:5311`)
+- **Backend API:** Runs on port `5310` (`http://localhost:5310`)
+- **Database:** Dedicated PostgreSQL database `shagun_helpdesk` (port 5432)
 
 ---
 
