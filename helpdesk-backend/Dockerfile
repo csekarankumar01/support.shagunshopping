@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # NestJS API. Needs Node 24 (the Kafka client requires >= 22.22 or >= 24.6).
-FROM node:24-slim AS base
+FROM node:25-slim AS base
 WORKDIR /app
 
 FROM base AS deps
