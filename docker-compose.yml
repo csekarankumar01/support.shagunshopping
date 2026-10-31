@@ -1,10 +1,9 @@
-# The whole system:   docker compose up -d --build      then open http://localhost:4311
-# Only the services:  docker compose up -d postgres redis redpanda mailpit   (and run the apps from your editor)
-# Do not run both at once: the containers and the apps on your machine use the same ports (4310, 4311).
+name: shagun-helpdesk
+
 services:
   postgres:
     image: postgres:17
-    container_name: helpdesk-postgres
+    container_name: shagun-postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -13,7 +12,7 @@ services:
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
-      - helpdesk_pgdata:/var/lib/postgresql/data
+      - shagun_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 5s
@@ -22,27 +21,24 @@ services:
 
   redis:
     image: redis:7
-    container_name: helpdesk-redis
+    container_name: shagun-redis
     restart: unless-stopped
-    # AOF persistence: SLA timers must survive a restart. The password comes from .env.
     command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
       - "${REDIS_PORT}:6379"
     volumes:
-      - helpdesk_redisdata:/data
+      - shagun_redisdata:/data
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
       interval: 5s
       timeout: 5s
       retries: 12
 
-  # Kafka-compatible broker in one container (decision recorded in CLAUDE.md section 13).
-  # Containers reach it at redpanda:9092; programs on this machine at localhost:${KAFKA_PORT}.
   redpanda:
     image: redpandadata/redpanda:v26.2.6
-    container_name: helpdesk-redpanda
+    container_name: shagun-redpanda
     restart: unless-stopped
     command:
       - redpanda
@@ -55,27 +51,24 @@ services:
     ports:
       - "${KAFKA_PORT}:19092"
     volumes:
-      - helpdesk_redpandadata:/var/lib/redpanda/data
+      - shagun_redpandadata:/var/lib/redpanda/data
     healthcheck:
       test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 12
 
-  # Local mail catcher: the app really sends email over SMTP, Mailpit keeps it instead of delivering it.
-  # Read the mail at http://localhost:${MAIL_UI_PORT}
   mailpit:
     image: axllent/mailpit:latest
-    container_name: helpdesk-mailpit
+    container_name: shagun-mailpit
     restart: unless-stopped
     ports:
       - "${SMTP_PORT}:1025"
       - "${MAIL_UI_PORT}:8025"
 
-  # Applies the numbered .sql migrations as the database owner, then exits. The API starts only after it succeeded.
   migrate:
     build: ./helpdesk-backend
-    container_name: helpdesk-migrate
+    container_name: shagun-migrate
     command: ["node", "db/migrate.mjs"]
     restart: "no"
     environment:
@@ -90,13 +83,12 @@ services:
       postgres:
         condition: service_healthy
 
-  # The API. It gets only what it needs: the restricted database role (never the owner), Redis, Kafka and SMTP.
   backend:
     build: ./helpdesk-backend
-    container_name: helpdesk-backend
+    container_name: shagun-backend
     restart: unless-stopped
     environment:
-      PORT: "4310"
+      PORT: "5310"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_DB: ${POSTGRES_DB}
@@ -112,15 +104,16 @@ services:
       KAFKA_BROKERS: redpanda:9092
       SMTP_HOST: ${SMTP_RELAY_HOST:-mailpit}
       SMTP_PORT: ${SMTP_RELAY_PORT:-1025}
-      MAIL_FROM: ${MAIL_FROM:-helpdesk@localhost}
-      SMTP_TLS: ${SMTP_TLS:-none} # none (Mailpit, development), starttls or tls
+      MAIL_FROM: ${MAIL_FROM:-support@shagunshopping.com}
+      SMTP_TLS: ${SMTP_TLS:-none}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      FRONTEND_ORIGIN: http://localhost:${FRONTEND_PORT:-4311}
-      TRUST_PROXY: "1" # the Next.js server sits in front and forwards the visitor's address
-      METRICS_TOKEN: ${METRICS_TOKEN:-} # empty = the /api/v1/metrics endpoint is switched off
+      FRONTEND_ORIGIN: http://localhost:${FRONTEND_PORT:-5311}
+      TRUST_PROXY: "1"
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
     ports:
-      - "${PORT:-4310}:4310"
+      - "${PORT:-5310}:5310"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -131,7 +124,7 @@ services:
       mailpit:
         condition: service_started
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4310/api/v1/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5310/api/v1/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -141,25 +134,24 @@ services:
     build:
       context: ./helpdesk-frontend
       args:
-        # Where the visitor's BROWSER opens the WebSocket (baked into the page code at build time).
-        NEXT_PUBLIC_SOCKET_URL: http://localhost:${PORT:-4310}
-    container_name: helpdesk-frontend
+        NEXT_PUBLIC_SOCKET_URL: http://localhost:${PORT:-5310}
+    container_name: shagun-frontend
     restart: unless-stopped
     environment:
-      API_URL: http://backend:4310
+      API_URL: http://backend:5310
     ports:
-      - "${FRONTEND_PORT:-4311}:4311"
+      - "${FRONTEND_PORT:-5311}:5311"
     depends_on:
       backend:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4311/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5311/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 10s
 
 volumes:
-  helpdesk_pgdata:
-  helpdesk_redisdata:
-  helpdesk_redpandadata:
+  shagun_pgdata:
+  shagun_redisdata:
+  shagun_redpandadata:
