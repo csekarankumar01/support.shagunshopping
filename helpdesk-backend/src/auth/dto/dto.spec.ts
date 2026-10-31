@@ -15,6 +15,13 @@ describe('login DTO', () => {
     expect(dto.orgSlug).toBe('demo');
   });
 
+  it('defaults organisation slug to shagun when omitted', () => {
+    const { dto, errors } = parse({ email: 'priya@example.com', password: 'Password123!' });
+    expect(errors).toHaveLength(0);
+    expect(dto.email).toBe('priya@example.com');
+    expect(dto.orgSlug).toBe('shagun');
+  });
+
   it('refuses an absurdly long password before bcrypt sees it', () => {
     expect(parse({ orgSlug: 'demo', email: 'a@b.co', password: 'x'.repeat(201) }).errors).not.toHaveLength(0);
   });

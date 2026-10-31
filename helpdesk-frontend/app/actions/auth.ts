@@ -15,7 +15,7 @@ async function signIn(orgSlug: string, email: string, password: string) {
 }
 
 export async function login(_prev: FormState, data: FormData): Promise<FormState> {
-  const orgSlug = text(data, 'orgSlug').toLowerCase();
+  const orgSlug = (text(data, 'orgSlug') || 'shagun').toLowerCase();
   const email = text(data, 'email');
   const password = String(data.get('password') ?? ''); // never trimmed: spaces can be part of a password
   try {

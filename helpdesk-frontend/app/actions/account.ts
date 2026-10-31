@@ -10,7 +10,7 @@ const secret = (data: FormData, key: string) => String(data.get(key) ?? ''); // 
 
 /** Same reply whether or not the account exists, so this page cannot be used to find out who has one. */
 export async function forgotPassword(_prev: FormState, data: FormData): Promise<FormState> {
-  const orgSlug = text(data, 'orgSlug').toLowerCase();
+  const orgSlug = (text(data, 'orgSlug') || 'shagun').toLowerCase();
   const email = text(data, 'email');
   try {
     await apiPublic('/api/v1/auth/forgot-password', { orgSlug, email });

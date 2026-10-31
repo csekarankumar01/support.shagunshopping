@@ -6,10 +6,10 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: {
-    default: "Flash HelpDesk",
-    template: "%s · Flash HelpDesk",
+    default: "Shagun Care · Shagun Shopping Support",
+    template: "%s · Shagun Care",
   },
-  description: "Flash HelpDesk - Real-time multi-tenant customer support and ticketing platform",
+  description: "Official customer care and resolution platform for Shagun Shopping (Meerut)",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

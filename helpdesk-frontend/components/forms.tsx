@@ -19,13 +19,13 @@ import { useHydrated } from '@/lib/use-hydrated';
 // page's JavaScript has loaded (see SubmitButton).
 
 export const inputClass =
-  'w-full rounded-xl border border-slate-200/90 bg-white/80 px-3.5 py-2 text-sm shadow-xs outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
+  'w-full rounded-xl border border-slate-200/90 bg-white/80 px-3.5 py-2 text-sm shadow-xs outline-none transition placeholder:text-slate-400 hover:border-pink-300 focus:border-[#cc145d] focus:ring-2 focus:ring-[#cc145d]/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
 export const selectClass =
-  'w-full cursor-pointer appearance-none rounded-xl border border-slate-200/90 bg-white/80 pl-3.5 pr-8 py-2 text-sm shadow-xs outline-none transition hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
+  'w-full cursor-pointer appearance-none rounded-xl border border-slate-200/90 bg-white/80 pl-3.5 pr-8 py-2 text-sm shadow-xs outline-none transition hover:border-pink-300 focus:border-[#cc145d] focus:ring-2 focus:ring-[#cc145d]/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
 export const inlineSelectClass =
-  'w-auto min-w-0 max-w-full cursor-pointer appearance-none rounded-xl border border-slate-200/90 bg-white/80 pl-3 pr-8 py-1.5 text-sm font-medium shadow-xs outline-none transition hover:border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
+  'w-auto min-w-0 max-w-full cursor-pointer appearance-none rounded-xl border border-slate-200/90 bg-white/80 pl-3 pr-8 py-1.5 text-sm font-medium shadow-xs outline-none transition hover:border-pink-300 focus:border-[#cc145d] focus:ring-2 focus:ring-[#cc145d]/20 dark:border-white/10 dark:bg-white/5 dark:hover:border-white/20';
 export const buttonClass =
-  'cursor-pointer rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-150 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98] disabled:opacity-60';
+  'cursor-pointer rounded-xl bg-gradient-to-r from-[#cc145d] to-[#a80c4a] px-4 py-2 text-sm font-semibold text-white shadow-md shadow-pink-600/25 transition-all duration-150 hover:from-[#b81052] hover:to-[#910a3f] active:scale-[0.98] disabled:opacity-60';
 
 /**
  * Disabled until the page's JavaScript has loaded. Before that, a click would make the browser post the form
@@ -78,7 +78,13 @@ export function LoginForm() {
   return (
     <form action={action} className="space-y-4">
       <Field label="Organisation (slug)">
-        <input name="orgSlug" required defaultValue={state.fields?.orgSlug} className={inputClass} autoComplete="organization" />
+        <input
+          name="orgSlug"
+          required
+          defaultValue={state.fields?.orgSlug || 'shagun'}
+          className={inputClass}
+          autoComplete="organization"
+        />
       </Field>
       <Field label="Email">
         <input name="email" type="email" required defaultValue={state.fields?.email} className={inputClass} autoComplete="email" />
@@ -164,10 +170,54 @@ export function VerifyEmailForm({ orgSlug, email }: { orgSlug: string; email: st
 
 export function NewTicketForm() {
   const [state, action, pending] = useActionState(createTicket, {});
+  const subjectRef = useRef<HTMLInputElement>(null);
+
+  const applyPreset = (prefix: string) => {
+    if (!subjectRef.current) return;
+    const current = subjectRef.current.value.trim();
+    if (!current) {
+      subjectRef.current.value = `${prefix} `;
+    } else if (!current.startsWith(prefix)) {
+      subjectRef.current.value = `${prefix} ${current}`;
+    }
+    subjectRef.current.focus();
+  };
+
   return (
     <form action={action} className="space-y-4">
+      <div>
+        <span className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1.5">
+          Quick Issue Presets
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {[
+            { label: '📦 Damaged / Leaked item', prefix: '[Order Damaged]' },
+            { label: '🚚 Courier delivery delay', prefix: '[Delivery Delay]' },
+            { label: '🔄 Return / Exchange', prefix: '[Return Request]' },
+            { label: '💄 Cosmetic / Shade advice', prefix: '[Product Advice]' },
+          ].map((cat) => (
+            <button
+              key={cat.label}
+              type="button"
+              onClick={() => applyPreset(cat.prefix)}
+              className="cursor-pointer rounded-lg border border-pink-200/80 bg-pink-50/60 px-2.5 py-1 text-xs font-medium text-pink-900 transition hover:bg-pink-100 hover:border-pink-300 dark:border-pink-900/30 dark:bg-pink-950/20 dark:text-pink-300 dark:hover:bg-pink-950/40"
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <Field label="Subject">
-        <input name="subject" required maxLength={200} defaultValue={state.fields?.subject} className={inputClass} />
+        <input
+          ref={subjectRef}
+          name="subject"
+          required
+          maxLength={200}
+          defaultValue={state.fields?.subject}
+          placeholder="e.g. [Order #SHG-8492] Damaged packaging on Dot & Key serum"
+          className={inputClass}
+        />
       </Field>
       <Field label="Priority">
         <select name="priority" defaultValue={state.fields?.priority ?? 'MEDIUM'} className={`${selectClass} max-w-[220px]`}>
@@ -382,7 +432,13 @@ export function ForgotPasswordForm() {
   return (
     <form action={action} className="space-y-4">
       <Field label="Organisation (slug)">
-        <input name="orgSlug" required defaultValue={state.fields?.orgSlug} className={inputClass} autoComplete="organization" />
+        <input
+          name="orgSlug"
+          required
+          defaultValue={state.fields?.orgSlug || 'shagun'}
+          className={inputClass}
+          autoComplete="organization"
+        />
       </Field>
       <Field label="Email">
         <input name="email" type="email" required defaultValue={state.fields?.email} className={inputClass} autoComplete="email" />

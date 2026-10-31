@@ -102,7 +102,7 @@ async function TicketList({ searchParams }: { searchParams: SearchParams }) {
         {user.role === 'CUSTOMER' && (
           <Link
             href="/tickets/new"
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-600/25 transition-all duration-150 hover:from-indigo-500 hover:to-violet-500 active:scale-[0.98]"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#cc145d] to-[#a80c4a] px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-pink-600/25 transition-all duration-150 hover:from-[#b81052] hover:to-[#910a3f] active:scale-[0.98]"
           >
             <span>+</span>
             <span>New ticket</span>

@@ -1,14 +1,14 @@
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { IsNormalizedEmail } from './email.js';
 
 export class ForgotPasswordDto {
   @Transform(({ value }: { value: unknown }) =>
-    typeof value === 'string' ? value.trim().toLowerCase() : value,
+    typeof value === 'string' && value.trim() ? value.trim().toLowerCase() : 'shagun',
   )
   @IsString()
-  @IsNotEmpty()
-  orgSlug!: string;
+  @IsOptional()
+  orgSlug?: string = 'shagun';
 
   @IsNormalizedEmail()
   email!: string;

@@ -14,10 +14,13 @@ export async function Nav() {
     <header className="sticky top-0 z-40 border-b border-slate-200/70 bg-white/75 backdrop-blur-lg dark:border-white/10 dark:bg-[#0b1020]/70">
       <nav className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-1 gap-y-2 px-4 py-2.5">
         <span className="mr-3 flex items-center gap-2 font-semibold tracking-tight">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500 text-sm font-bold text-white shadow-md shadow-indigo-600/30">
-            F
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[#a80c4a] via-[#cc145d] to-[#e6397e] text-sm font-bold text-white shadow-md shadow-pink-600/25">
+            S
           </span>
-          Flash HelpDesk
+          <span className="flex items-baseline gap-1">
+            <span className="font-bold text-slate-900 dark:text-white">Shagun Shopping<span className="text-[#cc145d]">.</span></span>
+            <span className="hidden sm:inline-block text-xs font-normal text-slate-500 dark:text-slate-400">Care</span>
+          </span>
         </span>
         {staff && (
           <NavLink href="/dashboard">
@@ -74,11 +77,14 @@ export function NavFallback() {
   return (
     <header className="border-b border-slate-200/70 bg-white/75 backdrop-blur-lg dark:border-white/10 dark:bg-[#0b1020]/70">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-2.5 font-semibold">
-        <span className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500 text-sm font-bold text-white shadow-md shadow-indigo-600/30">
-            F
+        <span className="flex items-center gap-2 font-semibold tracking-tight">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-[#a80c4a] via-[#cc145d] to-[#e6397e] text-sm font-bold text-white shadow-md shadow-pink-600/25">
+            S
           </span>
-          Flash HelpDesk
+          <span className="flex items-baseline gap-1">
+            <span className="font-bold text-slate-900 dark:text-white">Shagun Shopping<span className="text-[#cc145d]">.</span></span>
+            <span className="hidden sm:inline-block text-xs font-normal text-slate-500 dark:text-slate-400">Care</span>
+          </span>
         </span>
         <ThemeToggle />
       </div>

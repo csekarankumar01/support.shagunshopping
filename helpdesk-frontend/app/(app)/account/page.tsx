@@ -69,7 +69,7 @@ async function Account() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Organization: <span className="font-medium text-slate-700 dark:text-slate-300">{user.orgName || 'Acme Support'}</span> ({user.orgSlug || 'acme'})
+                Organization: <span className="font-medium text-slate-700 dark:text-slate-300">{user.orgName || 'Shagun Shopping'}</span> ({user.orgSlug || 'shagun'})
               </p>
             </div>
           </div>
@@ -82,7 +82,7 @@ async function Account() {
               Email Address
             </span>
             <p className="mt-1 font-semibold text-slate-900 dark:text-white truncate" title={user.email}>
-              {user.email || 'admin@acme.com'}
+              {user.email || 'support@shagunshopping.com'}
             </p>
           </div>
 
@@ -91,10 +91,10 @@ async function Account() {
               Organization
             </span>
             <p className="mt-1 font-semibold text-slate-900 dark:text-white truncate">
-              {user.orgName || 'Acme Support'}
+              {user.orgName || 'Shagun Shopping'}
             </p>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-              slug: {user.orgSlug || 'acme'}
+              slug: {user.orgSlug || 'shagun'}
             </p>
           </div>
 

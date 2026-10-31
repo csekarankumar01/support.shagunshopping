@@ -93,8 +93,11 @@ export class RateLimitGuard implements CanActivate {
     if (by === 'user') return request.user?.userId;
     const body = request.body as
       { orgSlug?: unknown; email?: unknown } | undefined;
-    if (typeof body?.orgSlug !== 'string' || typeof body?.email !== 'string')
-      return undefined;
-    return `${body.orgSlug.toLowerCase()}:${body.email.toLowerCase()}`;
+    if (typeof body?.email !== 'string') return undefined;
+    const orgSlug =
+      typeof body?.orgSlug === 'string' && body.orgSlug.trim()
+        ? body.orgSlug.trim().toLowerCase()
+        : 'shagun';
+    return `${orgSlug}:${body.email.toLowerCase()}`;
   }
 }

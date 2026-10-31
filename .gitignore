@@ -16,8 +16,10 @@ build/
 *.log
 npm-debug.log*
 
-# Test coverage
+# Test coverage & e2e artifacts
 coverage/
+test-results/
+playwright-report/
 
 # OS / editor
 .DS_Store
