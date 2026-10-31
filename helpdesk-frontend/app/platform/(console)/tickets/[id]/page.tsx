@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { LocalTime } from '@/components/local-time';
 import { ApiError } from '@/lib/api';
@@ -6,7 +7,21 @@ import { platformApi } from '@/lib/platform';
 import type { PlatformTicket } from '@/lib/platform';
 
 // Read-only. Opening this page is itself written to the platform audit log (by the API).
-export default async function PlatformTicketPage({ params }: { params: Promise<{ id: string }> }) {
+export default function PlatformTicketPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent dark:border-indigo-400" />
+        </div>
+      }
+    >
+      <PlatformTicketContent params={params} />
+    </Suspense>
+  );
+}
+
+async function PlatformTicketContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let ticket: PlatformTicket;
   try {

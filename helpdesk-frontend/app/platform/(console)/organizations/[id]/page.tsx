@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
 import { LocalTime } from '@/components/local-time';
 import { OrganizationForm, SuspendControls, UserControls } from '@/components/platform-forms';
@@ -9,7 +10,21 @@ import type { PlatformOrg, PlatformTicketRow, PlatformUser } from '@/lib/platfor
 const card =
   'space-y-4 rounded-2xl border border-slate-200/80 bg-white/80 p-6 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-900/60';
 
-export default async function OrganizationPage({ params }: { params: Promise<{ id: string }> }) {
+export default function OrganizationPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent dark:border-indigo-400" />
+        </div>
+      }
+    >
+      <OrganizationContent params={params} />
+    </Suspense>
+  );
+}
+
+async function OrganizationContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   let org: PlatformOrg;
   let users: PlatformUser[];

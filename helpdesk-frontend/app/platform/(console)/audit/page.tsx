@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { LocalTime } from '@/components/local-time';
 import { platformApi } from '@/lib/platform';
 import type { PlatformAuditEntry } from '@/lib/platform';
@@ -18,7 +19,21 @@ function actionBadge(action: string) {
   return 'border-slate-300 bg-slate-50 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-300';
 }
 
-export default async function PlatformAuditPage() {
+export default function PlatformAuditPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent dark:border-indigo-400" />
+        </div>
+      }
+    >
+      <PlatformAuditContent />
+    </Suspense>
+  );
+}
+
+async function PlatformAuditContent() {
   const entries = await platformApi<PlatformAuditEntry[]>('/audit');
 
   return (

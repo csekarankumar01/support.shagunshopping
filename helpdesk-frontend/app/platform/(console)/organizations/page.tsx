@@ -1,11 +1,26 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { LocalTime } from '@/components/local-time';
 import { platformApi } from '@/lib/platform';
 import type { PlatformOrg } from '@/lib/platform';
 
 type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>;
 
-export default async function OrganizationsPage({ searchParams }: { searchParams: SearchParams }) {
+export default function OrganizationsPage({ searchParams }: { searchParams: SearchParams }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-20">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent dark:border-indigo-400" />
+        </div>
+      }
+    >
+      <OrganizationsContent searchParams={searchParams} />
+    </Suspense>
+  );
+}
+
+async function OrganizationsContent({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const q = typeof params.q === 'string' ? params.q.trim().slice(0, 100) : '';
   const orgs = await platformApi<PlatformOrg[]>(`/organizations${q ? `?q=${encodeURIComponent(q)}` : ''}`);
