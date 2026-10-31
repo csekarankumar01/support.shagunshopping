@@ -18,7 +18,7 @@ async function Header() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
               </svg>
             </span>
-            <span className="text-base font-semibold tracking-tight text-white">Flash HelpDesk <span className="text-xs font-normal text-slate-400">· Console</span></span>
+            <span className="text-base font-semibold tracking-tight text-white">Shagun Care <span className="text-xs font-normal text-slate-400">· Console</span></span>
           </span>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-xs font-semibold text-purple-300">
             <span className="h-1.5 w-1.5 rounded-full bg-purple-400 animate-pulse" />

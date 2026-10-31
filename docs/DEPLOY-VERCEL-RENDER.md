@@ -40,17 +40,13 @@ Do **not** set `PORT`: Render provides it and the API reads it.
 | `JWT_SECRET` | a NEW long random string | `openssl rand -hex 48`; also protects verification codes and 2FA secrets, so never reuse or lose it |
 | `JWT_EXPIRES_IN_SECONDS` | `900` | |
 | `REDIS_URL` | the Key Value internal URL | |
-| `FRONTEND_ORIGIN` | `https://flash-helpdesk.vercel.app` | set to your Vercel domain; no trailing slash; comma-separate to allow more (e.g. `https://flash-helpdesk.vercel.app,http://localhost:4311`) |
+| `FRONTEND_ORIGIN` | `https://support.shagunshopping.com` | set to your custom domain; no trailing slash; comma-separate if adding localhost for testing (e.g. `https://support.shagunshopping.com,http://localhost:5311`) |
 | `TRUST_PROXY` | `2` | Vercel then Render each add a hop; check rate limits count real visitors |
 | `EVENTS_ENABLED` | `false` | until a Kafka service is set up |
 | `REQUIRE_EMAIL_VERIFICATION` | `true` | sign-up needs the emailed code |
 | `ALLOW_REGISTRATION` | `true` | set `false` once your own organisation exists, if you do not want strangers signing up |
-| `SMTP_HOST` | `smtp.resend.com` | |
-| `SMTP_PORT` | `465` | |
-| `SMTP_TLS` | `tls` | |
-| `SMTP_USER` | `resend` | |
-| `SMTP_PASSWORD` | your Resend API key | use a "Sending access" key; a full-access key was shared in chat, replace it |
-| `MAIL_FROM` | `Flash HelpDesk <no-reply@yourdomain.com>` | must be on a domain verified in Resend; until then `Flash HelpDesk <onboarding@resend.dev>`, which only reaches your own Resend email |
+| `RESEND_API_KEY` | your Resend API key (`re_...`) | the backend sends emails via Resend API directly |
+| `MAIL_FROM` | `Shagun Shopping Care <support@support.shagunshopping.com>` | must match the domain/subdomain verified in Resend (`support.shagunshopping.com`) |
 | `PLATFORM_REQUIRE_2FA` | `false` at first, `true` after you set up 2FA | see "First super admin" |
 | `METRICS_TOKEN` | optional long random string | protects `/metrics` |
 
@@ -74,10 +70,12 @@ After the deploy: open `https://YOUR-API.onrender.com/api/v1/health`. It should 
 
 That is all the frontend needs. Set both **before** the first deploy.
 
-## 4. Close the loop
+## 4. Custom Domain (support.shagunshopping.com) & Close the loop
 
-1. Copy the Vercel address: `https://flash-helpdesk.vercel.app` (use your stable production domain, not a preview URL).
-2. In Render set `FRONTEND_ORIGIN` to `https://flash-helpdesk.vercel.app` and let the API redeploy. Without this, live chat is refused (the API only
+1. In Vercel -> Project Settings -> **Domains**, add `support.shagunshopping.com`.
+2. In your DNS provider (Namecheap):
+   - Add a CNAME record: Host `support` pointing to `cname.vercel-dns.com.` (or A record pointing to `76.76.21.21` if coexisting with TXT/MX records).
+3. In Render set `FRONTEND_ORIGIN` to `https://support.shagunshopping.com` and let the API redeploy. Without this, live chat is refused (the API only
    accepts WebSocket connections from that origin) and password-reset/invitation links point at the wrong place.
 
 ## First super admin (once)
@@ -92,7 +90,7 @@ DATABASE_URL='<External Database URL>' POSTGRES_SSL=true \
   ... node db/platform-2fa.mjs you@example.com
 ```
 
-Then set `PLATFORM_REQUIRE_2FA=true` on Render. The console is at `https://flash-helpdesk.vercel.app/platform/login`.
+Then set `PLATFORM_REQUIRE_2FA=true` on Render. The console is at `https://support.shagunshopping.com/platform/login`.
 (The Render database must allow connections from your IP, or use Render's shell if your plan has one.)
 
 ## Checklist after deploying

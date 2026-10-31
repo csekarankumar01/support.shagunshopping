@@ -44,13 +44,13 @@ try {
     [user.org_id, user.id, tokenHash],
   );
 
-  const baseUrl = process.env.FRONTEND_ORIGIN?.split(',')[0].trim() || 'https://flash-helpdesk.vercel.app';
+  const baseUrl = process.env.FRONTEND_ORIGIN?.split(',')[0].trim() || 'https://support.shagunshopping.com';
   const inviteLink = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
   console.log('Generated Invite Link:', inviteLink);
 
   // 4. Send email via Resend
   const resend = new Resend(process.env.RESEND_API_KEY);
-  const from = process.env.MAIL_FROM ?? 'Flash HelpDesk <onboarding@resend.dev>';
+  const from = process.env.MAIL_FROM ?? 'Shagun Shopping Care <support@support.shagunshopping.com>';
   const { data, error } = await resend.emails.send({
     from,
     to: user.email,
